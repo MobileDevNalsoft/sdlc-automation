@@ -1,0 +1,20 @@
+{
+  "$comment": [
+    "dependency-audit suppressions. Copy to your project root as audit-allowlist.json.",
+    "Every entry needs id, package, reason, and expires. The expiry is not optional:",
+    "a permanent suppression is indistinguishable from having no check at all, and it",
+    "silently becomes policy. An expired entry FAILS the gate, which forces someone to",
+    "re-decide whether the reasoning still holds. Suppressions are meant to rot loudly.",
+    "Entries within 14 days of expiry are reported as warnings while still suppressing."
+  ],
+  "suppressions": [
+    {
+      "id": "GHSA-xxxx-xxxx-xxxx",
+      "package": "example-package",
+      "severity": "high",
+      "reason": "Advisory affects the SSR code path only; this package is used exclusively in a build-time script that never receives untrusted input. Re-evaluate if the package moves into runtime.",
+      "expires": "2026-10-31",
+      "owner": "team-or-person accountable for revisiting this"
+    }
+  ]
+}

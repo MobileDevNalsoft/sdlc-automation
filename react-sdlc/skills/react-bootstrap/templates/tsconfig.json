@@ -1,0 +1,46 @@
+{
+  // Both profiles (greenfield / adopt-in-place) share this exact shape.
+  // Pin the exact TypeScript version in both profiles per
+  // react-bootstrap/SKILL.md's version table — verify the current number
+  // with `npm view typescript version` (and read that file's "Why not the
+  // newest TypeScript" note before picking 7.x over 6.x).
+  //
+  // ADOPT-IN-PLACE NOTE: if the target repo's existing tsconfig.json already
+  // sets target/strict/moduleResolution/jsx/path-alias values sanely, this is
+  // not a migration target — leave it alone and only add the strict-flag
+  // ladder below over time. This file exists so a GREENFIELD project starts
+  // from the same baseline instead of `tsc --init`'s defaults, and so the
+  // strict-flag ladder has one canonical place to live either way.
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": ["vite/client"]
+
+    // ── Strict-flag ladder (owned by react-verify/SKILL.md) ──────────────
+    // Adopt ONE flag at a time, each with its own stated acceptance
+    // criterion measured on THIS repo before flipping the next one. Do not
+    // add these here until react-verify's ladder says the prior rung passed:
+    //   "noUncheckedIndexedAccess": true,
+    //   "exactOptionalPropertyTypes": true,
+    //   "noImplicitOverride": true,
+    //   "noPropertyAccessFromIndexSignature": true
+  },
+  "include": ["src"]
+}

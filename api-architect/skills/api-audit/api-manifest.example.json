@@ -1,0 +1,17 @@
+{
+  "_comment": "Example manifest consumed by scripts/audit-ords-drift.sql. Copy this file, rename it to match your module, and replace the entries below with your module's real (path, method) pairs. This is the 'documented way to supply the expected surface' the drift script reads instead of a hand-extracted, hardcoded endpoint list.",
+  "module_name": "{{MODULE_NAME}}",
+  "endpoints": [
+    { "path": "customers",            "method": "GET"    },
+    { "path": "customers/:id",        "method": "GET"    },
+    { "path": "customers",            "method": "POST"   },
+    { "path": "customers/:id",        "method": "PUT"    },
+    { "path": "customers/:id",        "method": "PATCH"  },
+    { "path": "customers/:id",        "method": "DELETE" },
+    { "path": "orders",                "method": "GET"    },
+    { "path": "orders/:id",            "method": "GET"    },
+    { "path": "orders",                "method": "POST"   },
+    { "path": "products",              "method": "GET"    },
+    { "path": "products/:id",          "method": "GET"    }
+  ]
+}

@@ -1,0 +1,38 @@
+# build_runner configuration for this project's code generators (freezed +
+# json_serializable). Both builder-key/option shapes below were fetched and
+# confirmed verbatim against upstream docs on 2026-07-29, not written from memory:
+#   - `json_serializable:` options block —
+#     https://github.com/google/json_serializable.dart/blob/master/json_serializable/README.md
+#     ("Build configuration" section).
+#   - `source_gen:combining_builder:` coverage-ignore preamble — same README,
+#     "To exclude generated files from coverage" section.
+#
+# freezed itself needs no build.yaml entry for the defaults this project uses —
+# checked freezed's own README (rrousselGit/freezed, packages/freezed/README.md,
+# fetched 2026-07-29) and it documents no build.yaml configuration section at all,
+# only the `part 'x.freezed.dart';` + `@freezed` annotation pair.
+
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Many backend REST APIs return snake_case JSON keys (common with
+          # Rails, Django REST Framework, PostgREST, and plenty of other
+          # stacks) while Dart fields stay lowerCamelCase by convention — this
+          # is the one config line that makes the DTO <-> domain-model split
+          # in flutter-slice's templates work without hand-written key-mapping
+          # in every model. If the target backend already returns
+          # lowerCamelCase JSON, delete this line rather than leaving it as
+          # dead configuration.
+          field_rename: snake
+          explicit_to_json: true
+
+      # Keep generated .freezed.dart/.g.dart files out of coverage reports so the
+      # flutter-verify coverage ratchet (bloc/ + services/ only, see that skill)
+      # never gets diluted or inflated by generated code neither this project nor
+      # its author actually wrote.
+      source_gen:combining_builder:
+        options:
+          preamble: |
+            // coverage:ignore-file

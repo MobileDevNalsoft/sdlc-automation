@@ -1,0 +1,8 @@
+{
+  "name": "schema-architect",
+  "version": "2.0.0",
+  "description": "Model, emit, audit, and promote skills for Oracle schema design, codifying industry-standard naming, audit-column, soft-delete, and migration-versioning conventions as parameterized, generalized guidance rather than any single project's choices.",
+  "author": {
+    "name": "madhankumar.ch"
+  }
+}

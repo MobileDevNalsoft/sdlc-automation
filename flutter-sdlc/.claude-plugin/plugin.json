@@ -1,0 +1,8 @@
+{
+  "name": "flutter-sdlc",
+  "version": "1.0.0",
+  "description": "Scaffold, vertical-slice, gate, and release skills for Flutter + flutter_bloc projects, following Google's MVVM + repository app-architecture guidance.",
+  "author": {
+    "name": "madhankumar.ch"
+  }
+}

@@ -1,0 +1,37 @@
+<!-- vendored flutter/website deployment guidance on 2026-07-29, source: flutter/website docs.flutter.dev/deployment/android, license: CC-BY-3.0 — attribution required -->
+<!--
+  Fetched verbatim from flutter/website's own repo (sites/docs/src/content/
+  deployment/android.md, "Reference the keystore from the app" section) on
+  2026-07-29. The property shape below (storePassword/keyPassword/keyAlias/
+  storeFile) and the two warnings are that doc's own wording, reproduced with
+  the CC-BY-3.0 attribution this marketplace's vendoring rules require for
+  flutter.dev content — not this plugin's own invention.
+-->
+
+# android/key.properties.example
+#
+# Copy this file to android/key.properties (same directory, no ".example"
+# suffix) and fill in real values. android/key.properties itself must NEVER
+# be committed — see the warning below, straight from flutter/website's own
+# deployment guidance:
+#
+#   "Keep the `key.properties` file private; don't check it into public
+#   source control."
+#
+# The consequence of ignoring that warning is not "rotate the key and move
+# on" the way a leaked API token would be: once an app is enrolled in Google
+# Play App Signing (the default for new Play Console apps), a leaked UPLOAD
+# key can be reset by contacting Google Play Console support — but the
+# PLAY APP SIGNING key itself (the one that actually signs what end users
+# download) has no such self-service reset. Treat this file with the same
+# severity as a database credential, not a convenience config file.
+#
+# storeFile path notes (from the same flutter/website doc):
+#   - macOS/Linux example:  /Users/<user name>/upload-keystore.jks
+#   - Windows: the path MUST use double backslashes, e.g.
+#              C:\\Users\\<user name>\\upload-keystore.jks
+
+storePassword=<password-from-keytool-step>
+keyPassword=<password-from-keytool-step>
+keyAlias=upload
+storeFile=<keystore-file-location>

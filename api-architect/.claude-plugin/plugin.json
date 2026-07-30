@@ -1,0 +1,8 @@
+{
+  "name": "api-architect",
+  "version": "1.0.0",
+  "description": "Contract, emit-handler, audit, and publish skills for designing, implementing, and governing REST APIs. Stack-neutral rules (real HTTP status codes, RFC 9457 problem+json errors, resource-oriented verbs, cursor pagination, bearer-token auth) grounded in current industry practice, with Oracle ORDS + PL/SQL as the primary worked implementation.",
+  "author": {
+    "name": "madhankumar.ch"
+  }
+}

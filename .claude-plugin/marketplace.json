@@ -1,0 +1,33 @@
+{
+  "name": "sdlc-automation",
+  "owner": {
+    "name": "madhankumar.ch"
+  },
+  "plugins": [
+    {
+      "name": "sdlc-core",
+      "source": "./sdlc-core",
+      "description": "The process layer: 4 agents (plan/developer/verify/review) plus shared skills for evidence discipline, output contracts, arbitration, vendoring provenance, secret scanning, walkthroughs, and world-class UI/UX design and audit for both web and mobile."
+    },
+    {
+      "name": "react-sdlc",
+      "source": "./react-sdlc",
+      "description": "Scaffold, vertical-slice, gate, and release skills for React + Vite + TypeScript. Generalized greenfield and adopt-in-place version-selection profiles, feature-based architecture with enforced import boundaries, and best-in-market state and routing patterns."
+    },
+    {
+      "name": "flutter-sdlc",
+      "source": "./flutter-sdlc",
+      "description": "Scaffold, vertical-slice, gate, and release skills for Flutter. flutter_bloc with Cubit as the settled state-management choice, Service/Repository/Cubit/Screen layering with sealed Result and state types, and a strict-analysis gate."
+    },
+    {
+      "name": "schema-architect",
+      "source": "./schema-architect",
+      "description": "Model, emit, audit, and promote skills for Oracle schema design. Parameterized naming, audit-column, soft-delete, and migration-versioning conventions grounded in current industry practice rather than any single project's choices."
+    },
+    {
+      "name": "api-architect",
+      "source": "./api-architect",
+      "description": "Contract, emit-handler, audit, and publish skills for REST APIs. Stack-neutral rules (real HTTP status codes, RFC 9457 problem+json, resource-oriented verbs, cursor pagination, bearer auth, idempotency, optimistic concurrency) with Oracle ORDS as the worked implementation."
+    }
+  ]
+}

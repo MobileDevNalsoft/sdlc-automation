@@ -1,0 +1,10 @@
+{
+  "_comment": "Merge this scripts block into package.json. Do not replace the whole scripts object — first check for existing scripts (a deploy target, a legacy dev-server variant, etc.) that duplicate or conflict with these, and flag them for a human decision per react-bootstrap/SKILL.md's 'auditing for dead parallel implementations' note rather than silently overwriting them.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  }
+}

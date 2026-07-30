@@ -1,0 +1,8 @@
+{
+  "name": "react-sdlc",
+  "version": "2.0.0",
+  "description": "Scaffold, vertical-slice, gate, and release skills for React + Vite + TypeScript projects — generalized greenfield and adopt-in-place version-selection profiles, following best-in-market architecture patterns rather than any single project's conventions.",
+  "author": {
+    "name": "madhankumar.ch"
+  }
+}

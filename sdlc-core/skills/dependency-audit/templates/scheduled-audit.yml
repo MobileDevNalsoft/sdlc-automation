@@ -1,0 +1,117 @@
+# Tier 3 scheduled dependency audit.
+#
+# Why this exists separately from the per-task gate: an audit result is a pure
+# function of the dependency tree, so the gate only fires when a manifest or
+# lockfile changes. But advisories are published against code nobody edited --
+# a lockfile untouched for six months can become vulnerable with no diff at
+# all. Per-task gating cannot catch that by construction. This can.
+#
+# Two deliberate differences from the gate:
+#   1. Lower threshold (moderate, not high). A report can afford noise a
+#      blocking gate cannot.
+#   2. It opens/updates an issue instead of failing a build. A red build on a
+#      schedule nobody is watching gets ignored; an issue gets triaged.
+#
+# ASSUMPTION: action versions below were not verified against the registry
+# during authoring. Pin them to current major tags and confirm before relying
+# on this file. Note that a pinned action version is itself a dependency the
+# gate's trigger list watches.
+
+name: Scheduled dependency audit
+
+on:
+  schedule:
+    # Mondays 06:00 UTC. Weekly is the right cadence for advisory publication;
+    # daily mostly re-reports the same findings and trains people to ignore it.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'   # or pin an explicit major
+          cache: npm
+
+      # --ignore-scripts: never run arbitrary lifecycle scripts from the
+      # dependency tree in a job that has a write-scoped token.
+      - name: Install (no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Audit (production deps, moderate and above)
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=moderate --omit=dev --json > audit.json 2>audit.err
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          # Fail loudly if npm produced an error document rather than a report.
+          # Valid JSON is not the same as an audit report -- npm emits its own
+          # errors as JSON, and treating those as "no findings" is a false pass.
+          if ! grep -q '"auditReportVersion"' audit.json; then
+            echo "npm audit did not return a report:" >&2
+            cat audit.err >&2 || true
+            exit 2
+          fi
+          node -e '
+            const d = JSON.parse(require("fs").readFileSync("audit.json","utf8"));
+            const v = d.metadata.vulnerabilities;
+            const rank = { low:0, moderate:1, high:2, critical:3 };
+            const bad = Object.entries(d.vulnerabilities || {})
+              .filter(([,x]) => rank[x.severity] >= rank.moderate)
+              .map(([n,x]) => `- \`${n}\` **${x.severity}**`);
+            const body = [
+              `Counts: critical=${v.critical} high=${v.high} moderate=${v.moderate} low=${v.low}`,
+              "",
+              bad.length ? bad.join("\n") : "_Nothing at or above moderate._"
+            ].join("\n");
+            require("fs").writeFileSync("audit.md", body);
+            console.log(body);
+          '
+
+      - name: Upload raw report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: |
+            audit.json
+            audit.md
+          if-no-files-found: warn
+
+      # Reuse one issue rather than opening a new one weekly -- a fresh issue
+      # every Monday is how a scheduled audit becomes noise people mute.
+      - name: Open or update the tracking issue
+        if: steps.audit.outputs.exit != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('audit.md', 'utf8');
+            const title = 'Dependency audit: advisories at or above moderate';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'dependencies'
+            });
+            const hit = existing.data.find(i => i.title === title);
+            const stamped = `_Updated ${new Date().toISOString()} by scheduled audit._\n\n${body}`;
+            if (hit) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: hit.number, body: stamped
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body: stamped, labels: ['dependencies']
+              });
+            }

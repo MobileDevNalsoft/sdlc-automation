@@ -1,0 +1,74 @@
+### smoke-test.http
+### Final step of the api-publish sequence — run this against the endpoint
+### you just published (VS Code "REST Client" extension or IntelliJ HTTP
+### Client syntax; both read @variables and ### request separators the same
+### way).
+###
+### REMINDER (API-CONTRACT.md A4): for a NEW endpoint on this contract, the
+### HTTP status line IS the result — check it first. Only fall back to
+### reading a body-embedded result-code field if this specific module is
+### still on the legacy always-200 convention (API-CONTRACT.md L1) and
+### hasn't been migrated yet; know which convention applies before you read
+### the response.
+
+@baseUrl = https://{{host}}/ords/{{schemaAlias}}/{{modulePath}}
+@bearerToken = {{pasteARealTokenHere}}
+
+### 1. Auth check — cheapest possible smoke test, confirms the module, the
+### base path, and Authorization: Bearer handling (A8) are all wired up
+### before testing anything resource-specific.
+GET {{baseUrl}}/auth/session
+Authorization: Bearer {{bearerToken}}
+Accept: application/json
+
+### Expect: 200 with the resolved identity in the body. A 401 here means the
+### token is missing/invalid/expired — get a fresh one before smoke-testing
+### anything else. A 403 means the token is valid but this identity has no
+### access to this API/tenant.
+
+### 2. GET collection, paginated (API-CONTRACT.md A7 — offset by default)
+GET {{baseUrl}}/{{resourcesPlural}}?page_number=1&page_size=5
+Authorization: Bearer {{bearerToken}}
+Accept: application/json
+
+### Expect: 200, body.data (array), body.total_count, body.page_number,
+### body.page_size.
+
+### 3. GET by id (API-CONTRACT.md A2)
+### Replace :id with a real id returned from request #2's data[0].id.
+GET {{baseUrl}}/{{resourcesPlural}}/1
+Authorization: Bearer {{bearerToken}}
+Accept: application/json
+
+### Expect: 200 with the resource body, or 404 with an
+### application/problem+json body if it doesn't exist (A4/A5).
+
+### 4. POST create (API-CONTRACT.md A3 — resource-oriented, not /save)
+POST {{baseUrl}}/{{resourcesPlural}}
+Authorization: Bearer {{bearerToken}}
+Content-Type: application/json
+Idempotency-Key: smoke-test-{{$guid}}
+
+{
+  "name": "Smoke Test Co",
+  "description": "Created by api-publish smoke test — safe to delete"
+}
+
+### Expect: 201 Created, Location header pointing at the new resource,
+### response body containing its id. A 400 with an application/problem+json
+### body means the request didn't parse — check the payload against
+### engine-procedure-template.sql's structural-validation step. A 422 means
+### it parsed fine but failed a business rule — check the problem body's
+### `detail` field for which one.
+###
+### CLEANUP: this smoke test writes a real row. Point @baseUrl at a
+### non-production schema/environment, or manually remove the "Smoke Test
+### Co" row after a production smoke test — DELETE {{baseUrl}}/{{resourcesPlural}}/{id}
+### if a delete endpoint is published, otherwise remove it directly.
+
+### 5. DELETE the smoke-test row (cleanup, if a delete endpoint exists —
+### API-CONTRACT.md A3). Replace :id with the id returned from request #4.
+DELETE {{baseUrl}}/{{resourcesPlural}}/1
+Authorization: Bearer {{bearerToken}}
+
+### Expect: 204 No Content.

@@ -1,0 +1,46 @@
+# .brownfield.yaml — annotated suppression ledger for very_good_analysis@10.3.0
+#
+# What this file is: a human-readable audit trail of every pre-existing violation
+# this project deliberately suppressed the day very_good_analysis@10.3.0 was turned
+# on against an *already-existing* (brownfield) codebase, so strict analysis doesn't
+# instantly fail on unrelated legacy code the current task didn't touch.
+#
+# What this file is NOT: a file Dart's analyzer reads directly. It is not wired in
+# via analysis_options.yaml's `include:` mechanism — see that file's header for why
+# (ASSUMPTION: Dart's include-chain merge semantics for `analyzer: exclude:` lists
+# are not confirmed this session, so this project keeps one authoritative exclude
+# list rather than relying on merge-across-includes). Whenever an entry is added or
+# removed here, mirror the same glob into analysis_options.yaml's `analyzer:
+# exclude:` block by hand — the two lists are not automatically kept in sync.
+#
+# How to add an entry:
+#   1. Run `flutter analyze --fatal-infos` against the freshly-adopted codebase.
+#   2. For each violation that is impractical to fix in the same pass as turning
+#      the linter on, add one entry below with: the path/glob, the rule(s) it
+#      trips, a one-line reason, and a "review_by" date so the suppression doesn't
+#      quietly become permanent.
+#   3. Mirror the path glob into analysis_options.yaml's `analyzer: exclude:` list
+#      (whole-file suppression) — this ruleset has no first-party mechanism for a
+#      single-rule-on-a-single-file suppression list short of `// ignore:` comments
+#      at the call site, which is the preferred fix for anything narrower than a
+#      whole file.
+#
+# ASSUMPTION: every entry below is a placeholder. No real `flutter analyze` run
+# against an adopted codebase happened this session (this plugin was built without
+# a locally-accessible Flutter project — see flutter-bootstrap/SKILL.md), so there
+# is no actual violation count to report. Delete this placeholder block the first
+# time this file is populated from a real run.
+
+suppressions:
+  - path: "lib/legacy/**"
+    rules:
+      - public_member_api_docs
+    reason: >
+      ASSUMPTION (placeholder, not observed): on most brownfield adoptions,
+      public_member_api_docs is the single largest first-run violation count
+      because pre-existing public classes/methods were never doc-commented.
+      Replace this entry with the real legacy path(s) and real rule name(s)
+      once `flutter analyze --fatal-infos` has actually been run.
+    added_on: "2026-07-29"
+    review_by: "2026-10-29"
+    owner: "ASSUMPTION: unassigned — set to whoever ran the first adoption analyze pass"
