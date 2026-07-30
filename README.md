@@ -11,7 +11,7 @@ Two things it will never do: proceed past a decision that's yours to make, and m
 ## Install
 
 ```bash
-/plugin marketplace add D:\Madhan_Utils\sdlc-plugins
+/plugin marketplace add MobileDevNalsoft/sdlc-automation
 /plugin install sdlc-core@sdlc-automation
 /plugin install react-sdlc@sdlc-automation        # or flutter-sdlc, schema-architect, api-architect
 /reload-plugins
