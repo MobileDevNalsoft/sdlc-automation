@@ -7,15 +7,32 @@ description: Use when implementing one vertical feature slice end-to-end in a Re
 
 **Verb: slice.**
 
+## Verified 2026-07-31
+
+Every template in this directory was dropped into a real Vite project
+scaffolded from `react-bootstrap`'s templates and checked: `tsc --noEmit`
+exit 0, `eslint` exit 0. That matters because these files import
+`@/shared/api/base-api.service`, and **before 2026-07-31 nothing emitted that
+file** — a project scaffolded by react-bootstrap and then sliced did not
+compile. Re-run both commands after editing a template here.
+
 ## The seam this skill owns, in order
 
 ```
 REST/JSON API contract (any backend technology — see templates/api-contract.md)
   -> *-dto.types.ts (wire shape, matches the API response exactly)
     -> *.transformers.ts (wire format <-> domain model — the ONLY place this translation happens)
-      -> *.queries.ts (query-key factory + useQuery/useMutation, { signal } threaded through)
-        -> component (never touches a DTO or a wire-format field directly)
+      -> *.api.ts (extends BaseApiService; { signal } forwarded on every method)
+        -> *.queries.ts (query-key factory + useQuery/useMutation, typed with ApiError)
+          -> component (never touches a DTO, a wire-format field, or an AxiosError)
 ```
+
+**The HTTP client is not a choice this skill makes any more.** `react-bootstrap`
+settled it: one configured axios instance, reached only through
+`BaseApiService`. A feature api service extends that base and inherits the
+auth/retry interceptors and the error mapping. Do not construct an axios
+instance, call `fetch`, or import `axios` inside a feature — if a `.tsx` or
+`*.queries.ts` file imports from `axios`, something has gone around the seam.
 
 Every template file in `templates/` is a complete worked example of one small, generic feature — tagging a `<parent-entity>` with a lookup-coded label, instantiated here as "Product Tags" — chosen because it's small enough to read end-to-end in one sitting but touches every layer above. This is a neutral illustrative domain, not a real feature: copy the *pattern*, don't copy "Product" or "tag" into an unrelated feature's naming.
 
@@ -42,9 +59,50 @@ Many codebases wire TanStack Query without ever threading the `signal` TanStack 
 
 Translation happens in exactly one place per slice: the `*.transformers.ts` file. This isn't only about casing (`snake_case` vs `camelCase`) — it's the single seam where every mismatch between "what the wire sends" and "what the domain model needs" gets resolved: a nullable wire field defaulting to a sensible domain value, a string timestamp becoming a typed value, a numeric status code becoming a named union. A DTO field must never be read directly inside a component or a `*.queries.ts` hook — if you find yourself reading a raw wire-format field inside a `.tsx` file, the transformer is missing a mapping, not the component taking a shortcut.
 
-## Presentation layer: this skill wires data, it does not design the UI
+## Errors: one type, all the way up
 
-`ProductTagsPanel.tsx` (and any component this skill's pattern produces) intentionally uses plain, unstyled markup. Visual design, typography, color, spacing, and layout decisions are owned by a separate skill — `sdlc-core:ui-ux-web` for building the UI, `sdlc-core:ui-ux-review` for reviewing it — not by this skill. react-slice's job ends at "the data-fetching/mutation wiring is correct and the component renders the right states (loading, error, empty, populated)"; hand the actual visual treatment to those skills rather than inventing styling conventions here.
+`BaseApiService` maps every failure before throwing, so a hook's error type is
+`ApiError` and never an `AxiosError`. Type the hooks explicitly
+(`UseQueryResult<Model[], ApiError>`), because that is what lets a component
+switch exhaustively on `error.detail.kind` — `validation` carries a `fields`
+map, `rateLimited` carries `retryAfterSeconds`, and so on.
+
+Practical consequence: a component should not invent its own error copy.
+`error.detail.message` is already user-facing and mapped, and `isRetryable`
+answers whether offering "Try again" is honest — a retry button on a 403 is a
+lie.
+
+## Render all FOUR states. An empty list is not an error.
+
+```
+loading | error | EMPTY | populated
+```
+
+The most common defect in this layer is collapsing empty into one of the other
+three. Rendering "failed to load" for a successful response containing zero
+rows teaches users to distrust the app and hides the real call to action ("Add
+your first tag"); rendering nothing at all looks like a broken page.
+`ProductTagsPanel.tsx` branches on all four explicitly.
+
+Two details worth copying from that template: use `isPending`, not
+`isLoading`, for "there is no data yet" (v5 semantics), and give **mutation**
+errors their own surface — the query-level error branch has already returned by
+the time a mutation fails, so an unrendered `mutation.error` is silent.
+
+## Presentation layer: this skill wires data and states, not visual design
+
+`ProductTagsPanel.tsx` uses the shared primitives `react-bootstrap` ships
+(`Button`, `ErrorView`, `EmptyState`, `LoadingState`) rather than raw
+`<button>`/`<div>`, the same way flutter-sdlc requires `AppButton` over
+`FilledButton`. That is an **architecture** decision — states, semantics,
+focus handling and tap-target sizing get decided once — not a visual one.
+
+Visual design (typography, color, spacing, layout) remains owned by
+`sdlc-core:ui-ux-web`, reviewed by `sdlc-core:ui-ux-review`. react-slice's job
+ends at "the wiring is correct and all four states render"; hand the visual
+treatment to those skills rather than inventing styling conventions here, and
+prefer your own feature's existing component conventions over this template's
+markup.
 
 ## What this skill does NOT do
 
@@ -52,7 +110,17 @@ It does not write `docs/walkthroughs/<task-id>.md`. `sdlc-core:walkthrough` form
 
 ## Cross-references
 
-- `react-sdlc:react-bootstrap` must have already run for the project — this skill assumes `eslint.config.js`, `tsconfig.json`, and the feature-folder shape (`src/features/<feature>/{api,components,types}`) already exist.
+- `react-sdlc:react-bootstrap` must have already run — this skill assumes
+  `eslint.config.js`, `tsconfig.json`, the feature-folder shape
+  (`src/features/<feature>/{api,components,types}`), **and `src/shared/api/`
+  with `BaseApiService` + `ApiError`** already exist. If `BaseApiService` is
+  missing, run react-bootstrap rather than hand-writing a substitute — a
+  per-feature axios instance would bypass the auth refresh and retry
+  interceptors entirely, and nothing would fail loudly to tell you.
+- The boundary lint rule enforces that a feature imports only its own subtree,
+  `shared/`, and `styles/`. Reaching into another feature is an ESLint error,
+  not a convention — navigate via the path constants in
+  `@/shared/navigation/routes`, never by importing another feature's symbol.
 - `react-sdlc:react-verify` gates the result (`tsc --noEmit`, diff-scoped `eslint`) — this skill does not run those itself. Note the gate does not bundle; if this slice touched bundler config, a tsconfig path/alias, an asset import, or an env-var read, run the production build by hand before handing off.
 - `sdlc-core:ui-ux-web` / `sdlc-core:ui-ux-review` own visual/typography/color/layout decisions for whatever component this slice produces — see "Presentation layer" above.
 - `sdlc-core:secret-scan` runs over this slice's diff before it's reported `IMPLEMENTED` — a slice that touches backend/API-contract files is in that scanner's scope like any other file, not exempt because "it's a frontend task."

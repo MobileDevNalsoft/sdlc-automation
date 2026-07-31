@@ -1,0 +1,90 @@
+{
+  "//": [
+    "VERIFIED DEPENDENCY SET — react-bootstrap greenfield profile.",
+    "",
+    "Every version below was installed TOGETHER and proven on 2026-07-31:",
+    "  npm install       -> 389 packages, ZERO peer conflicts",
+    "  npx tsc --noEmit  -> exit 0",
+    "  npx eslint .      -> exit 0",
+    "  npx vite build    -> exit 0 (route chunks split correctly)",
+    "  npx vitest run    -> 5/5 passing",
+    "on Node v24.14.1 / npm 11.11.0, Windows 11.",
+    "",
+    "This is a POINT-IN-TIME snapshot, not a permanent truth. Re-verify with",
+    "`npm view <pkg> version` before a new scaffold. For the adopt-in-place",
+    "profile do NOT copy these numbers — match the target repo's installed",
+    "majors instead (see SKILL.md).",
+    "",
+    "THE `overrides` BLOCK IS LOAD-BEARING — read its note before removing it."
+  ],
+
+  "dependencies": {
+    "@hookform/resolvers": "5.5.7",
+    "@tanstack/react-query": "5.101.4",
+    "axios": "1.19.0",
+    "clsx": "2.1.1",
+    "i18next": "26.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-error-boundary": "6.1.2",
+    "react-hook-form": "7.83.0",
+    "react-i18next": "17.0.11",
+    "react-router": "8.3.0",
+    "tailwind-merge": "3.6.0",
+    "zod": "4.4.3",
+    "zustand": "5.0.14"
+  },
+
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/eslint-plugin-query": "5.101.4",
+    "@tanstack/react-query-devtools": "5.101.4",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "10.8.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-boundaries": "7.1.0",
+    "eslint-plugin-import-x": "4.17.1",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.3",
+    "globals": "17.8.0",
+    "happy-dom": "20.11.1",
+    "msw": "2.15.0",
+    "prettier": "3.9.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.65.0",
+    "vite": "8.2.0",
+    "vitest": "4.1.10"
+  },
+
+  "overrides": {
+    "//": [
+      "WITHOUT THIS, `npm install` FAILS OUTRIGHT. Verified failure text:",
+      "  npm error peer eslint@'^3 || ... || ^9' from eslint-plugin-jsx-a11y@6.10.2",
+      "",
+      "eslint-plugin-jsx-a11y's latest release (6.10.2, published 2024-10-26)",
+      "predates ESLint 10 and has NO release supporting it — full version list",
+      "and dist-tags checked on 2026-07-31.",
+      "",
+      "The override is not blind hope: WITH it applied, a fixture containing an",
+      "<img> missing alt plus a click handler on a <div> produced 3 jsx-a11y",
+      "errors — so the plugin's rules genuinely execute under ESLint 10.",
+      "",
+      "REMOVE THIS as soon as jsx-a11y ships ESLint 10 support. Until then the",
+      "alternative is either no a11y linting or staying on ESLint 9, which",
+      "reaches end-of-life 2026-08-06."
+    ],
+    "eslint-plugin-jsx-a11y": {
+      "eslint": "$eslint"
+    }
+  }
+}

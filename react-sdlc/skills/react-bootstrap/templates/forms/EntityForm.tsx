@@ -7,15 +7,23 @@
 // owned by sdlc-core:ui-ux-web / reviewed by sdlc-core:ui-ux-review, not by
 // this skill.
 import { useEntityForm } from './useEntityForm';
-import type { EntityFormValues } from './schema';
+import type { EntityFormInput, EntityFormValues } from './schema';
 
 interface EntityFormProps {
-  initialValues?: Partial<EntityFormValues>;
+  // Initial values are the INPUT shape (a defaulted field may be absent);
+  // onSubmit receives the OUTPUT shape (every default is resolved). Collapsing
+  // these two into one type is what broke this template originally — see
+  // schema.ts.
+  initialValues?: Partial<EntityFormInput>;
   onSubmit: (values: EntityFormValues) => void | Promise<void>;
   isSubmitting?: boolean;
 }
 
-export function EntityForm({ initialValues, onSubmit, isSubmitting }: EntityFormProps) {
+export function EntityForm({
+  initialValues,
+  onSubmit,
+  isSubmitting,
+}: EntityFormProps): React.ReactElement {
   const {
     register,
     handleSubmit,

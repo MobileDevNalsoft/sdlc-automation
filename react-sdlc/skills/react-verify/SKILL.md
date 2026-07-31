@@ -77,6 +77,41 @@ A bundler build is the slowest check available and it re-runs on every fix cycle
 
 It does not auto-fix or retry — that policy (how many fix-and-rerun cycles are allowed, how many total gate executions per task) lives in `sdlc-core`'s `sdlc-verify` agent, which decides whether to re-invoke this script. This script's only job is to run once, honestly, and print `GATE-PASS` or `GATE-FAIL: <check>` as its last lines.
 
+## The feature-boundary rule rides inside the lint check — and it can fail silently
+
+`react-bootstrap`'s `eslint.config.js` enables `boundaries/dependencies`, so
+architectural violations (one feature importing another's internals, a feature
+importing `app/`, `shared/` importing a feature) are caught by check #2 with no
+extra command.
+
+**But this rule has a failure mode the four states above cannot see.** If its
+TypeScript import resolver is missing or misconfigured, every import classifies
+as an unknown element, no policy matches, and the rule reports **zero
+violations while running perfectly happily** — `eslint` still exits 0, so the
+gate reads `PASS`. Same for a misspelled selector key (`capture` instead of
+`captured`), which is silently ignored and drops the constraint entirely. Both
+were hit for real; see react-bootstrap's SKILL.md traps 2 and 3.
+
+That is precisely the defect class this skill's "a broken trigger that silently
+reads green is worse than no check" rule exists to name — so it does not get a
+pass for living inside another check.
+
+**Re-prove the rule after any change to `eslint.config.js`, `tsconfig.json`
+paths, the `@` alias, or the resolver packages.** The proof is two cases, and
+both must hold:
+
+```powershell
+# 1. A deliberate cross-feature import MUST fail.
+#    Temporarily add to src/features/<a>/components/_probe.tsx:
+#      import { X } from '../../<b>/components/X';
+npx eslint src/features/<a>/components/_probe.tsx   # expect exit 1
+# 2. A legitimate same-feature import MUST pass.
+npx eslint src/features/<a>/components/<RealFile>.tsx  # expect exit 0
+```
+
+If case 1 exits 0, report the lint check `NOT RUN`, not `PASS` — the rule is
+not doing anything. Delete the probe file afterwards.
+
 ## The strict-flag ladder — one flag at a time, each with its own acceptance criterion
 
 Do **not** add `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, and `noPropertyAccessFromIndexSignature` to `tsconfig.json` all at once — a multi-flag jump makes it impossible to tell which flag caused which new error, and produces a wall of unrelated fixes in one diff. Adopt in this order, one rung at a time:

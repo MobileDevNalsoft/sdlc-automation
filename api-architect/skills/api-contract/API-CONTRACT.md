@@ -223,6 +223,56 @@ mostly-static; use cursor pagination for anything user-facing at scale,
 anything with a high write rate, or anything where "the same row appearing
 twice" or "a row silently skipped" is a real problem for the caller.
 
+See **A23** for the prior question — whether this collection needs pagination
+at all, and what to do when it is too big for any synchronous response.
+
+### ORDS binding — three facts that change what you write
+
+Fetched from Oracle's ORDS implicit-parameters documentation, 2026-07-31.
+
+**1. Use `:fetch_offset` / `:fetch_size`. The `:page_*` pair is deprecated.**
+
+| Parameter | Status |
+|---|---|
+| `:fetch_offset`, `:fetch_size` | **Recommended** (12c+), pairs with the row-limiting clause |
+| `:page_offset`, `:page_size` | **Deprecated** |
+| `:row_offset`, `:row_count` | Legacy — the `row_number()` wrapper approach |
+
+```sql
+select * from app_order_t
+ order by order_id desc
+offset :fetch_offset rows fetch next :fetch_size rows only
+```
+
+ORDS sets `:fetch_size` to *page size + 1* — the extra row is how it decides
+whether a next page exists, and it is never returned to the client. Do not
+"correct" the off-by-one.
+
+**2. Those names are RESERVED — do not reuse them as custom bind names.**
+
+In a `source_type_plsql` handler, ORDS binds any parameter whose name matches
+an implicit parameter with **its own** value. So a handler that declares
+`:page_size` intending "the client's requested page size" is naming a
+deprecated ORDS implicit parameter, and what arrives is whatever ORDS decides
+to supply — not necessarily the query parameter the client sent.
+
+Name custom binds so they cannot collide: `:p_page`, `:p_limit`, `:p_cursor`.
+`api-emit-handler`'s collection template uses the non-colliding names for
+exactly this reason.
+
+**3. A PL/SQL handler returning a `SYS_REFCURSOR` gets NO automatic
+pagination.**
+
+ORDS auto-paginates its own SQL-based (`source_type_query`) handlers. It does
+**not** paginate a ref cursor handed back from a PL/SQL block — the client
+receives the whole cursor. If you return a ref cursor from a collection
+endpoint, **pagination is entirely your code's responsibility**, and the
+absence of it will not produce an error, just an unbounded response.
+
+This is why this plugin's collection template hand-rolls pagination with
+explicit binds and a materialized CLOB body rather than returning a ref
+cursor — see `plsql-conventions` P14 for the trade-off table.
+
 ## A8 — Authentication: `Authorization: Bearer <token>`
 
 Use the standard `Authorization: Bearer <token>` header (RFC 6750) with
@@ -455,6 +505,80 @@ suite hitting real endpoints). Use both: guard clauses for defensive runtime
 invariants, a real test framework for the "does this endpoint do what it
 claims" question. Don't let "we have assert-style guard clauses" stand in
 for "we have tests."
+
+## A23 — Large payloads: decide by boundedness, and know which of the four shapes you need
+
+A7 covers *how* to paginate. A23 covers the prior question — **does this
+response need bounding at all, and if the data is genuinely huge, is a
+synchronous REST call even the right delivery mechanism.**
+
+### Step 1 — classify the collection
+
+Same test as `schema-architect:plsql-conventions` P10, and the two must agree:
+the API shape and the PL/SQL that fills it are one decision, not two.
+
+| Class | Test | Shape |
+|---|---|---|
+| **Bounded by construction** | closed set, grows only by deliberate human insert (lookup/code/status/country lists) | **Return it whole. No pagination.** |
+| **Bounded by business rule** | children of one parent, capped by the domain (order lines, contact phone numbers) | Return whole **only if** you can name the cap and it is small. State the cap in the contract. |
+| **Caller-driven / unbounded** | anything filtered or grown by users (orders, events, audit, search) | **Paginate (A7).** Offset for small/static, cursor for large/mutating. |
+| **Bulk / export scale** | reconciliations, full extracts, feeds — "all of it", by design | **Not a synchronous endpoint.** See step 3. |
+
+**Paginating a 12-row lookup table is a defect too.** It adds a page loop, a
+count, and cursor handling to every client for zero benefit. "Always
+paginate" is as wrong as "never paginate" — the classification is the rule.
+
+### Step 2 — cap what you serve, regardless of what was asked for
+
+Every paginated endpoint declares a **maximum** page size and clamps to it
+silently rather than honouring `?page_size=1000000`:
+
+```
+page_size: default 20, max 100   (values above max are clamped, not rejected)
+```
+
+An uncapped `page_size` is a denial-of-service vector that needs no
+attacker — one enthusiastic client integration will find it. Clamping rather
+than erroring keeps a naive client working instead of breaking it with a 400
+it does not know how to handle. Document the cap in the contract so the
+clamp is not a surprise.
+
+### Step 3 — when it genuinely is "all of it", stop using a request/response
+
+A synchronous HTTP call is the wrong shape for a multi-million-row extract,
+and no timeout increase fixes it — a load balancer, reverse proxy, or gateway
+between you and the client will terminate a long-held connection regardless
+of what the database is capable of. Use one of:
+
+- **Async export job.** `POST /exports` → `202 Accepted` + a job id;
+  `GET /exports/{id}` reports status; the payload is fetched from a
+  pre-signed URL or object store when ready. This is what large public APIs
+  do, and it survives the client disconnecting.
+- **Streaming response** (`Transfer-Encoding: chunked`, NDJSON or CSV). Viable
+  when the consumer can process incrementally *and* nothing between you and
+  it buffers the whole body. Note the real cost: **you cannot send a
+  meaningful HTTP error status once the first byte is on the wire** — the
+  status line is already sent, so a mid-stream failure has to be signalled
+  in-band, which every consumer must then handle.
+- **Cursor pagination the client loops** (A7). Simplest, and usually the right
+  answer for "large but not enormous" — no new infrastructure.
+
+### Step 4 — compression is not a substitute for bounding
+
+`Content-Encoding: gzip` is worth enabling for JSON (it compresses well), but
+it reduces *bytes on the wire*, not the memory the server used to build the
+payload or the time the database spent producing it. A 200 MB response
+gzipped to 12 MB still built 200 MB in server memory first. Compress **and**
+bound; never compress **instead of** bounding.
+
+### ORDS binding
+
+- The database-side mechanics — `BULK COLLECT ... LIMIT`, CLOB assembly with
+  `DBMS_LOB`, `JSON_ARRAYAGG ... RETURNING CLOB` — are
+  `plsql-conventions` **P12–P13**. A handler that respects A23 and ignores
+  P13 will still fail, with `ORA-06502`, at exactly the size it was built for.
+- A response body assembled into a `VARCHAR2` out-bind is capped at **32,767
+  bytes**. Any collection response must use a `CLOB` out-bind from the start.
 
 ---
 

@@ -1,0 +1,80 @@
+/* DESTINATION: src/styles/tokens.css
+ *
+ * Parallel to flutter-bootstrap's core/theme/app_colors.dart +
+ * app_tokens.dart: THE ONLY FILE ALLOWED TO DEFINE A RAW COLOR.
+ *
+ * Tailwind v4 is CSS-first — `@theme` here replaces v3's tailwind.config.js
+ * entirely, and each token becomes a real utility class (`--color-bg` gives
+ * you `bg-bg`, `text-bg`, `border-bg`). A feature writing `bg-[#1e293b]`
+ * instead of `bg-surface` is the same defect as a Flutter feature writing a
+ * raw Color literal, and is caught the same way: by review, or by the
+ * boundary/token check if you enable it.
+ *
+ * Colors are declared in oklch: perceptually uniform, so a lightness ramp
+ * looks evenly spaced rather than bunching in the blues, and it addresses
+ * wide-gamut displays that hex cannot reach.
+ */
+@import 'tailwindcss';
+
+/* Class-based dark mode: the app writes `.dark` on <html>, so the UI store's
+ * theme choice wins over the OS. `prefers-color-scheme` alone would make the
+ * 'system' option the ONLY option. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* --- Brand ramp — the one seed the rest of the palette derives from --- */
+  --color-brand-50: oklch(0.97 0.02 256);
+  --color-brand-100: oklch(0.93 0.04 256);
+  --color-brand-300: oklch(0.78 0.11 256);
+  --color-brand-500: oklch(0.58 0.19 256);
+  --color-brand-600: oklch(0.51 0.19 256);
+  --color-brand-700: oklch(0.44 0.17 256);
+  --color-brand-900: oklch(0.29 0.11 256);
+
+  /* --- Semantic surfaces. Features use THESE, never the ramp directly ---
+   * so a rebrand is an edit to this block, not a find-and-replace. */
+  --color-bg: oklch(0.99 0.002 256);
+  --color-surface: oklch(1 0 0);
+  --color-surface-raised: oklch(0.97 0.004 256);
+  --color-border: oklch(0.9 0.006 256);
+  --color-fg: oklch(0.25 0.015 256);
+  --color-fg-muted: oklch(0.52 0.014 256);
+  --color-fg-onbrand: oklch(0.99 0 0);
+
+  /* --- Status --- */
+  --color-danger: oklch(0.55 0.21 27);
+  --color-danger-soft: oklch(0.95 0.04 27);
+  --color-success: oklch(0.6 0.15 150);
+  --color-warning: oklch(0.75 0.15 80);
+
+  /* --- Spacing / radius / motion: the AppGap + AppTokens equivalent --- */
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --animate-duration-fast: 120ms;
+  --animate-duration-base: 200ms;
+}
+
+/* Dark theme re-points the SEMANTIC tokens only. Nothing downstream changes,
+ * which is the entire reason features are forbidden from using the ramp. */
+.dark {
+  --color-bg: oklch(0.19 0.015 256);
+  --color-surface: oklch(0.23 0.017 256);
+  --color-surface-raised: oklch(0.27 0.019 256);
+  --color-border: oklch(0.34 0.02 256);
+  --color-fg: oklch(0.96 0.005 256);
+  --color-fg-muted: oklch(0.72 0.015 256);
+  --color-danger: oklch(0.68 0.19 27);
+  --color-danger-soft: oklch(0.28 0.07 27);
+}
+
+/* Respect the OS setting for users who never open the theme switcher. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

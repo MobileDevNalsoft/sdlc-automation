@@ -1,0 +1,8 @@
+{
+  "name": "docs-architect",
+  "version": "1.0.0",
+  "description": "Context, onboarding, reference, and guide skills for generating and maintaining documentation from a codebase. Splits by source-of-truth and refresh trigger rather than by stack, so a polyglot repo gets one cross-cutting trace instead of four drifting per-stack documents. Every claim is traceable to a file; a check that could not run reports NOT RUN rather than a silent pass.",
+  "author": {
+    "name": "madhankumar.ch"
+  }
+}

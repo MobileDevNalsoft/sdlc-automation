@@ -1,19 +1,18 @@
 // product-tags.api.ts — react-slice worked example: "Product Tags"
 //
-// Extends your project's shared HTTP client base class the same way every
-// other feature's *.api.ts does — this template doesn't assume axios vs
-// fetch specifically (see react-bootstrap/SKILL.md's "HTTP client choice"),
-// only that the base class's methods accept and forward an options object
-// that includes an AbortSignal.
+// Extends BaseApiService, which react-bootstrap ships at
+// templates/shared/api/base-api.service.ts. Inheriting it gets three things
+// for free, so no feature re-implements them:
+//   - the ONE configured axios instance (auth + retry interceptors attached)
+//   - error mapping: every failure leaves as ApiError, never an AxiosError
+//   - the basePath prefix applied to each call
 //
-// EVERY method here accepts and forwards an AbortSignal, so a query's
-// cancellation actually reaches the network call instead of the request
-// continuing after the component/hook that started it has gone away. This
-// does NOT require changing the shared base class — most HTTP client
-// wrappers already accept a per-request signal; the usual gap is that no
-// feature's *.api.ts actually passes one through (see the SKILL.md's
-// "Threading { signal }" section).
-import { BaseApiService } from '../../../shared/api/base-api.service';
+// EVERY method accepts and forwards an AbortSignal, so a query's cancellation
+// actually reaches the network instead of the request completing after the
+// hook that started it has gone away. The capability is usually already
+// present in a client wrapper; the common gap is that nothing passes one
+// through (see the SKILL.md's "Threading { signal }" section).
+import { BaseApiService } from '@/shared/api/base-api.service';
 import type { ProductTagDTO, CreateProductTagRequest } from '../types/product-tag-dto.types';
 
 class ProductTagsApiService extends BaseApiService {

@@ -28,6 +28,11 @@
       "name": "api-architect",
       "source": "./api-architect",
       "description": "Contract, emit-handler, audit, and publish skills for REST APIs. Stack-neutral rules (real HTTP status codes, RFC 9457 problem+json, resource-oriented verbs, cursor pagination, bearer auth, idempotency, optimistic concurrency) with Oracle ORDS as the worked implementation."
+    },
+    {
+      "name": "docs-architect",
+      "source": "./docs-architect",
+      "description": "Context, onboarding, reference, and guide skills for documentation generated from the codebase. Maintains the 3-tier agent context (code-review-graph, graphify, llmwiki), writes a cross-stack onboarding trace instead of four drifting per-stack docs, derives API and schema reference from the live dictionary, and produces user guides with a regenerable screenshot manifest."
     }
   ]
 }

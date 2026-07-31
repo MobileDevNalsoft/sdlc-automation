@@ -6,67 +6,86 @@
 
 # Project tree — both profiles
 
-## Adopt-in-place — read the target repo before assuming this shape
+The three-layer split (`app/` > `features/` > `shared/`) is not a convention
+here, it is **machine-enforced** by `boundaries/dependencies` in
+`eslint.config.js`:
 
-Confirm the target repo's actual existing structure before treating any of
-this as already true; the tree below is what a react-bootstrap pass
-produces, not a claim about what any specific project already has.
+- `app/` may import anything — it is the composition root.
+- `features/<x>/` may import its OWN subtree, `shared/`, and `styles/`.
+  It may **not** import another feature, and may **not** import `app/`.
+- `shared/` may import only `shared/` and `styles/`.
 
-```
-<project-root>/
-├── public/
-│   ├── config.js                  # NEW — see react-bootstrap templates/public/config.js
-│   ├── config.local.example.js    # NEW — copy to config.local.js (gitignored) locally
-│   └── manifest.json              # existing, if present — untouched
-├── src/
-│   ├── app/                       # composition root — providers, router, layout
-│   ├── shared/
-│   │   ├── api/                   # HTTP client base class, common types
-│   │   └── ...                    # design-system primitives, generic hooks
-│   ├── features/
-│   │   └── <feature>/
-│   │       ├── api/
-│   │       │   ├── <feature>.api.ts           # HTTP calls
-│   │       │   ├── <feature>.queries.ts       # useQuery/useMutation + query-key factory
-│   │       │   └── <feature>.transformers.ts  # wire format <-> domain model
-│   │       ├── components/
-│   │       └── types/
-│   │           └── <feature>-dto.types.ts     # wire shape, matches the API response exactly
-│   ├── store/                     # client-state stores (e.g. Zustand slices)
-│   └── main.tsx
-├── vite.config.ts                 # base path parameterized via BASE_PATH at build time — see SKILL.md
-├── tsconfig.json                  # matches this skill's template baseline
-├── eslint.config.js               # NEW if the target repo has no lint config yet
-├── Dockerfile                     # BASE_PATH ARG + credential-proxy wiring
-├── docker-nginx.conf              # adds /api/ auth-proxy location
-├── docker-entrypoint.d/
-│   └── 50-inject-api-auth.sh      # NEW
-└── package.json
-```
+Verify the rule still fires after touching the resolver, the aliases, or the
+elements patterns — see react-bootstrap/SKILL.md trap 2 for the two-case check.
 
 ## Greenfield
-
-Same feature-folder shape from day one — no existing code to reconcile
-against.
 
 ```
 <new-project>/
 ├── public/
-│   ├── config.js
-│   └── config.local.example.js
+│   ├── config.js                   # window.__ENV__ dev defaults (no secrets)
+│   └── config.local.example.js     # copy to config.local.js (gitignored)
 ├── src/
-│   ├── app/
-│   ├── shared/
-│   │   └── api/{config.ts,client.ts,base-api.service.ts}
+│   ├── main.tsx                    # single entrypoint; wires the token port
+│   ├── app/                        # composition root — may import anything
+│   │   ├── App.tsx
+│   │   ├── AppLayout.tsx
+│   │   ├── providers.tsx           # ErrorBoundary > Query > I18n > Suspense
+│   │   ├── query-client.ts         # cache policy + compounding-retry fix
+│   │   └── router/
+│   │       ├── router.tsx          # the one aggregator; every route lazy
+│   │       ├── RequireAuth.tsx     # redirects BEFORE mount
+│   │       └── RouteErrorBoundary.tsx
 │   ├── features/
-│   │   └── <feature>/{api,components,types}/...
-│   ├── store/
-│   └── main.tsx
-├── vite.config.ts
-├── tsconfig.json
-├── eslint.config.js
-├── Dockerfile
+│   │   └── <feature>/              # written by react-slice, one at a time
+│   │       ├── api/
+│   │       │   ├── <feature>.api.ts           # extends BaseApiService
+│   │       │   ├── <feature>.queries.ts       # keys + useQuery/useMutation
+│   │       │   └── <feature>.transformers.ts  # wire <-> domain, ONE place
+│   │       ├── components/
+│   │       └── types/
+│   │           └── <feature>-dto.types.ts     # wire shape, exact field names
+│   ├── shared/                     # bottom layer — imports neither app nor features
+│   │   ├── api/
+│   │   │   ├── http-client.ts      # the one axios instance, ordered chain
+│   │   │   ├── auth-interceptor.ts # single-flight 401 refresh (tested)
+│   │   │   ├── retry-interceptor.ts# idempotent methods only
+│   │   │   ├── api-error.ts        # AppError union + ApiError carrier
+│   │   │   └── base-api.service.ts # what every feature api extends
+│   │   ├── config/env.ts           # typed runtime config, parsed once
+│   │   ├── navigation/routes.ts    # path constants — in shared/, NOT app/
+│   │   ├── storage/                # interfaces + one impl + test double
+│   │   ├── store/                  # zustand slices, per-field selectors
+│   │   ├── ui/                     # cn, Button, Spinner, ErrorView
+│   │   └── i18n/                   # i18n.ts, i18next.d.ts, locales/
+│   └── styles/tokens.css           # THE only file defining a raw color
+├── index.html                      # loads config.js before the bundle
+├── vite.config.ts                  # base path via BASE_PATH at build time
+├── vitest.setup.ts                 # seeds window.__ENV__ before any import
+├── tsconfig.json                   # no baseUrl; erasableSyntaxOnly on
+├── eslint.config.js                # boundary rule + TS resolver (mandatory)
+├── Dockerfile                      # BASE_PATH ARG + credential proxy
 ├── docker-nginx.conf
 ├── docker-entrypoint.d/50-inject-api-auth.sh
-└── package.json                   # see react-bootstrap/SKILL.md's version table
+└── package.json                    # see templates/package.deps.verified.json
 ```
+
+## Adopt-in-place — read the target repo before assuming this shape
+
+Confirm the target's actual structure first; the tree above is what a
+react-bootstrap pass produces, not a claim about any existing project.
+
+Adopt in this order, so each step is independently reviewable:
+
+1. `tsconfig.json` + `eslint.config.js` (+ the `overrides` block — without it
+   `npm install` fails on ESLint 10; see SKILL.md trap 1).
+2. `shared/config/env.ts` + `public/config.js`.
+3. `shared/api/**` — the largest win, and what react-slice depends on.
+4. `shared/store/**`, `shared/storage/**`.
+5. `app/**` routing and providers.
+6. `styles/tokens.css` + `shared/ui/**` — usually the most invasive, because
+   it touches existing markup. Leave it last.
+
+The boundary rule will report violations against pre-existing code the moment
+it is switched on. Set it to `warn` first, measure the count, and fix by
+directory rather than failing the adoption pass on day one.

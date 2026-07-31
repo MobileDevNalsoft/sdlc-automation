@@ -1,0 +1,29 @@
+{
+  "common": {
+    "retry": "Try again",
+    "goBack": "Go back",
+    "loading": "Loading",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Could not reach the server.",
+    "timeout": "The request timed out.",
+    "unauthorized": "Your session has expired.",
+    "forbidden": "You do not have access to this.",
+    "notFound": "Not found."
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password"
+  },
+  "products": {
+    "title": "Products",
+    "empty": "No products yet",
+    "emptyDescription": "Products you create will appear here.",
+    "create": "Add product"
+  }
+}

@@ -24,16 +24,25 @@ begin
      -- Bind-variable casing is an internal implementation detail (A6) — pick
      -- one casing and use it consistently for bind names; it does not have
      -- to match the wire-format field casing, which is a separate decision.
+     -- BIND NAMES ARE DELIBERATELY NOT :page_size / :page_offset (A7).
+     -- Those are ORDS IMPLICIT parameter names (the deprecated pair). In a
+     -- source_type_plsql handler ORDS binds any parameter matching an
+     -- implicit name with ITS OWN value — so a bind called :page_size does
+     -- not reliably carry the client's requested page size. The :p_ prefix
+     -- keeps every custom bind out of ORDS's reserved namespace.
+     -- Reserved, do not reuse: fetch_offset, fetch_size, page_offset,
+     -- page_size, row_offset, row_count, status_code, forward_location,
+     -- content_type.  (:status_code below IS intentionally the ORDS one.)
      p_source      => 'DECLARE l_tok VARCHAR2(2000); BEGIN '
                     || 'l_tok := {{APP_PKG}}.get_bearer_token; '  -- A8 — see auth helper note below
                     || '{{APP_PKG}}.{{GET_COLLECTION_PROC}}('
-                    ||   'p_page_number => :page_number, '
-                    ||   'p_page_size   => :page_size, '
-                    ||   'p_cursor      => :cursor, '        -- optional, see cursor variant below (A7)
-                    ||   'p_status      => :status, '        -- optional filter, drop if unused
+                    ||   'p_page_number => :p_page, '
+                    ||   'p_page_size   => :p_limit, '       -- clamped to a max server-side (A23 step 2)
+                    ||   'p_cursor      => :p_cursor, '      -- optional, see cursor variant below (A7)
+                    ||   'p_status      => :p_status, '      -- optional filter, drop if unused
                     ||   'p_token       => l_tok, '
-                    ||   'p_status_code => :status_code, '   -- A4 — real HTTP status out-bind
-                    ||   'p_body_text   => :body_text); '    -- CLOB out-bind for the response
+                    ||   'p_status_code => :status_code, '   -- A4 — real HTTP status out-bind (ORDS implicit)
+                    ||   'p_body_text   => :body_text); '    -- CLOB out-bind — never VARCHAR2 (P13)
                     || 'END;'
   );
 end;
@@ -56,14 +65,27 @@ end;
 -- See templates/engine-procedure-template.sql for the full body skeleton.
 -- ============================================================================
 --
---   procedure {{GET_COLLECTION_PROC}} (
+--   procedure {{GET_COLLECTION_PROC}}_p (          -- _p suffix: P1
 --      p_page_number  in  number   default 1,
 --      p_page_size    in  number   default 20,
 --      p_status       in  varchar2 default null,
 --      p_token        in  varchar2 default null,
 --      p_status_code  out number,
---      p_body_text    out clob
+--      p_body_text    out clob                     -- CLOB, never VARCHAR2: P13
 --   );
+--
+-- CLAMP p_page_size SERVER-SIDE (A23 step 2) — an uncapped page size is a
+-- denial-of-service vector that needs no attacker, just one enthusiastic
+-- client integration:
+--
+--   l_limit := least(nvl(p_page_size, c_default_page_size), c_max_page_size);
+--
+-- Clamp rather than reject: a naive client asking for 1,000,000 keeps working
+-- instead of getting a 400 it has no handler for.
+--
+-- Body assembly must follow P13 — build the CLOB with dbms_lob.writeappend
+-- (or JSON_ARRAYAGG ... RETURNING CLOB), never `l_body := l_body || x` in a
+-- loop, which is O(n²), and always freetemporary on the exception path too.
 --
 -- Response body shape (A4/A5 — real status via :status_code, body is plain
 -- success payload, not problem+json, since this is the success path):

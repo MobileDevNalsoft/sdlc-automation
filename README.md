@@ -1,6 +1,6 @@
 # sdlc-automation
 
-A local Claude Code plugin marketplace: **5 plugins · 4 agents · 26 skills**.
+A local Claude Code plugin marketplace: **6 plugins · 4 agents · 31 skills**.
 
 Human-triggered, agent-assisted delivery across React/web, Flutter/mobile, Oracle schema, and REST APIs. You tag work with a task; the pipeline plans it, implements one vertical slice, gates itself on build quality and security, and hands back a written walkthrough plus an uncommitted diff.
 
@@ -13,7 +13,7 @@ Two things it will never do: proceed past a decision that's yours to make, and m
 ```bash
 /plugin marketplace add MobileDevNalsoft/sdlc-automation
 /plugin install sdlc-core@sdlc-automation
-/plugin install react-sdlc@sdlc-automation        # or flutter-sdlc, schema-architect, api-architect
+/plugin install react-sdlc@sdlc-automation        # or flutter-sdlc, schema-architect, api-architect, docs-architect
 /reload-plugins
 ```
 
@@ -177,6 +177,7 @@ flowchart LR
         FS["flutter-sdlc:*"]
         SA["schema-architect:*"]
         AA["api-architect:*"]
+        DOC["docs-architect:*"]
         WK["sdlc-core:walkthrough"]
     end
 
@@ -184,6 +185,7 @@ flowchart LR
     D ==>|"Skill tool"| FS
     D ==>|"Skill tool"| SA
     D ==>|"Skill tool"| AA
+    BOOT["bootstrap skills · first run"] ==> DOC
     PIPE["pipeline / main loop"] ==> WK
 
     subgraph EXT ["external skills these delegate to"]
@@ -306,10 +308,21 @@ That's acceptable rather than reckless because **the release path still bundles*
 
 | Skill | Verb | What it owns |
 |---|---|---|
-| `react-bootstrap` | scaffold | Greenfield or adopt-in-place version profiles, eslint flat config, feature-boundary architecture, state and routing patterns, reverse-proxy auth so no credential reaches the browser. |
-| `react-slice` | slice | The vertical seam: DTO → transformer → query/mutation → component. Delegates every visual decision to `ui-ux-web`. |
-| `react-verify` | gate | typecheck + diff-scoped lint via `gate.ps1`. |
+| `react-bootstrap` | scaffold | Greenfield or adopt-in-place version profiles, plus a full `src/` overlay: axios client with single-flight 401 refresh, idempotent-only retry, an `ApiError` union, react-router 8 with a pre-mount auth guard, typed runtime config, storage behind interfaces, Zustand slices, Tailwind v4 tokens, i18n. ESLint 10 flat config whose feature-boundary rule is proven to fire. Reverse-proxy auth so no credential reaches the browser. |
+| `react-slice` | slice | The vertical seam: DTO → transformer → `BaseApiService` → query/mutation typed with `ApiError` → component rendering all four states. Delegates every visual decision to `ui-ux-web`. |
+| `react-verify` | gate | typecheck + diff-scoped lint via `gate.ps1`, including the boundary rule and its silent-no-op re-proof. |
 | `react-ship` | release | Refuses to run until five unverified container behaviours are confirmed once. |
+
+### `docs-architect` — documentation (4)
+
+Split by **source of truth and refresh trigger**, not by stack — four stacks × four doc types would be sixteen skills that all drift.
+
+| Skill | Verb | What it owns |
+|---|---|---|
+| `docs-context` | index | The 3-tier agent context: `code-review-graph` (AST/blast radius), `graphify` (structural), `llmwiki/` (architecture memory). Creates them for greenfield or existing projects. `ensure-context.ps1` reports NOT RUN for an absent tool and STUB for an unauthored wiki, and exits non-zero for both — a placeholder must not read as documentation. |
+| `docs-onboarding` | onboard | One `CODEBASE_ONBOARDING.md` owning the **cross-stack request trace** (React click → ORDS → PL/SQL → table → back), plus a per-stack deep-dive for each stack actually detected. A fact lives in exactly one file; everything else links. `Flaws and risks` is a required section. |
+| `docs-reference` | reference | Exhaustive schema and API reference generated from the **live dictionary**, not from source files — so a disagreement with the checked-in DDL is real deployment drift, reported rather than reconciled. Reports column-comment coverage as a percentage. |
+| `docs-guide` | guide | End-user, task-oriented guides with a checked-in **screenshot manifest** so images are regenerable rather than hand-pasted. Masks identifying data before capture. With no browser tool: writes guides and manifest, reports screenshots NOT RUN — never a placeholder image, never a described screen it did not see. |
 
 ### `flutter-sdlc` — mobile (4)
 
@@ -320,11 +333,12 @@ That's acceptable rather than reckless because **the release path still bundles*
 | `flutter-verify` | gate | Blocking: analyze, boundaries, tests. Advisory: bloc lint, coverage ratchet. |
 | `flutter-ship` | release | Android flavors and signing, obfuscation paired with symbol retention. iOS is a documented stub. |
 
-### `schema-architect` — database (4)
+### `schema-architect` — database (5)
 
 | Skill | Verb | What it owns |
 |---|---|---|
-| `schema-model` | model | Nine-step request → DDL procedure, per-FK `ON DELETE` rationale, and the FK-indexing step Oracle doesn't do for you. |
+| `schema-model` | model | Nine-step request → DDL procedure, per-FK `ON DELETE` rationale, and the FK-indexing step Oracle doesn't do for you. Owns the naming contract for **data objects**. |
+| `plsql-conventions` | conform | Rules P1–P20: the naming contract for **program units** (`_p` procedures, `_f` functions, `_pkg` packages, `l_`/`p_`/`g_` scope prefixes) and the large-data mechanics — `BULK COLLECT ... LIMIT`, CLOB assembly, and why `l_body := l_body \|\| x` in a loop is O(n²). P17 (no request state in package globals under pooled connections) is a security rule, not a tidiness one. |
 | `schema-emit` | emit-ddl | Business, junction, and lookup templates. Identity columns for greenfield; sequence + trigger as the adopt-in-place path. |
 | `schema-audit` | audit | Four scripts written as exhaustive negative filters, so an empty result is a real pass. |
 | `schema-promote` | promote | Six-phase promotion, grants first, explicit per-object grants, invalid-object check last, rollback policy by change class. |
@@ -333,7 +347,7 @@ That's acceptable rather than reckless because **the release path still bundles*
 
 | Skill | Verb | What it owns |
 |---|---|---|
-| `api-contract` | contract | Numbered rules A1–A21 so a review can cite a violation by number. Real HTTP status codes and RFC 9457 `problem+json` are the default; the always-200 pattern is a labelled legacy path. |
+| `api-contract` | contract | Numbered rules A1–A23 so a review can cite a violation by number. Real HTTP status codes and RFC 9457 `problem+json` are the default; the always-200 pattern is a labelled legacy path. A7 carries the ORDS pagination facts (`:fetch_offset`/`:fetch_size`; `:page_size` is deprecated **and reserved**; a PL/SQL handler's ref cursor is **not** auto-paginated); A23 decides whether a collection needs bounding at all. |
 | `api-emit-handler` | emit-handler | Collection, by-id, and write-operation templates. Validation before any mutation; instrumentation at every entry point. |
 | `api-audit` | audit | Diffs the declared surface against what's actually deployed, both directions, plus a scan for request-scoped state held at module scope. |
 | `api-publish` | publish | Teardown → define → enable → drift audit → runnable smoke test. The checked-in file is truth. |
@@ -353,7 +367,9 @@ That's acceptable rather than reckless because **the release path still bundles*
 
 ## Status, honestly
 
-- **Nothing here has been installed or executed by Claude Code yet.** Structure, frontmatter, reference resolution, and tool allowlists were verified; the plugin loader has not accepted these files.
+- **The plugin loader has not accepted these files.** Structure, frontmatter, reference resolution, and tool allowlists were verified; nothing here has been installed as a plugin by Claude Code yet.
+- **`react-sdlc`'s templates ARE execution-verified (2026-07-31).** Its full dependency set was installed together (389 packages, zero peer conflicts) and driven in a real Vite project on Node v24.14.1 / Windows 11: `tsc --noEmit`, `eslint .`, and `vite build` all exit 0, and 8/8 tests pass — covering the scaffold, the `react-slice` templates, and the `forms/` templates. Seven real failures were found and fixed in the process, including that `eslint-plugin-jsx-a11y` cannot install under ESLint 10, that the feature-boundary rule was a silent no-op, and that the `forms/` templates never compiled at all. **This is the one plugin whose "it works" claim is backed by having run it** — keep it true by re-running those four commands after editing a react template.
+- **`react-sdlc`'s container templates are still unverified.** No image was built or run; `react-ship`'s STOP CONDITIONS still gate them.
 - **Both PowerShell engines were executed and tested** — `scan-secrets.ps1` against planted secrets and placeholder bait, `dependency-audit.ps1` against a real vulnerable tree, a clean tree, a no-trigger diff, and a missing lockfile.
 - **`osv-scanner` and `gitleaks` invocations are unverified** — neither tool was available during authoring. Both report `NOT RUN` rather than degrading to a pass.
 - **Container image scanning is not wired in.** It reports `NOT COVERED`.

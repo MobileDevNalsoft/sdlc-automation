@@ -1,0 +1,76 @@
+{
+  "//": [
+    "Screenshot manifest — checked in, so every image in the user guides is",
+    "REGENERABLE rather than hand-pasted. Hand-pasted screenshots are the",
+    "reason screenshot documentation rots: nobody re-takes forty images.",
+    "",
+    "Run against a fixture-seeded environment, NEVER production or a real",
+    "user account — a shipped screenshot containing real names, emails, or",
+    "account numbers is a data-leak incident.",
+    "",
+    "With no browser automation tool available, this file is still written and",
+    "committed; the generation step reports NOT RUN. Wiring a tool up later",
+    "produces the images with no change to the guides."
+  ],
+
+  "baseUrl": "http://localhost:5173",
+  "outputDir": "docs/guides/images",
+
+  "defaults": {
+    "viewport": [1280, 800],
+    "//deviceScaleFactor": "2 gives readable images on high-DPI displays; it doubles file size, so drop to 1 if the repo is size-sensitive.",
+    "deviceScaleFactor": 2,
+    "//theme": "Pin the theme. Without this, whoever runs it in dark mode produces a guide that matches nobody else's.",
+    "theme": "light",
+    "//maskColor": "Solid block over masked regions.",
+    "maskColor": "#94a3b8"
+  },
+
+  "//auth": "How the run authenticates. Keep the VALUE in an env var; this file is committed.",
+  "auth": {
+    "mode": "form",
+    "route": "/login",
+    "usernameSelector": "[data-testid='email']",
+    "passwordSelector": "[data-testid='password']",
+    "submitSelector": "[data-testid='sign-in']",
+    "usernameEnv": "DOCS_FIXTURE_USER",
+    "passwordEnv": "DOCS_FIXTURE_PASSWORD"
+  },
+
+  "shots": [
+    {
+      "id": "order-list-populated",
+      "//": "waitFor a SELECTOR, never a fixed delay — a sleep screenshots a spinner on a slow run and passes on a fast one.",
+      "route": "/orders",
+      "waitFor": "[data-testid='order-row']",
+      "actions": [],
+      "//mask": "Privacy control, not cosmetic. Blank anything identifying before capture.",
+      "mask": ["[data-testid='user-email']", "[data-testid='account-number']"],
+      "file": "order-list-populated.png",
+      "caption": "The order list after at least one order exists."
+    },
+    {
+      "id": "order-form-validation-error",
+      "//": "Error states are worth screenshotting: they are what a user sees when stuck, and are the hardest thing to describe in words.",
+      "route": "/orders/new",
+      "waitFor": "[data-testid='order-form']",
+      "actions": [
+        { "type": "click", "selector": "[data-testid='submit']" },
+        { "type": "waitFor", "selector": "[role='alert']" }
+      ],
+      "mask": [],
+      "file": "order-form-validation-error.png",
+      "caption": "Submitting an empty form shows which fields are required."
+    },
+    {
+      "id": "order-detail-mobile",
+      "//": "Override defaults per shot when the guide covers a responsive layout.",
+      "route": "/orders/1001",
+      "viewport": [390, 844],
+      "waitFor": "[data-testid='order-detail']",
+      "mask": ["[data-testid='customer-name']"],
+      "file": "order-detail-mobile.png",
+      "caption": "Order detail on a phone-sized viewport."
+    }
+  ]
+}

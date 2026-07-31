@@ -48,11 +48,37 @@ haven't — these templates implement rules A1–A22, they don't re-explain them
    `api-architect:api-publish`) to confirm the new template/handler actually
    landed as declared.
 
+## The PL/SQL these templates generate is bound by `plsql-conventions`
+
+Every engine procedure emitted here is PL/SQL, so it is governed by
+`schema-architect:plsql-conventions` (P1–P20) as well as by the HTTP contract.
+The four that bite hardest in a handler:
+
+- **P1** — the procedure carries the `_p` suffix (or the target schema's own
+  convention, if it already has one).
+- **P13** — a collection response body is a **`CLOB` out-bind, never
+  `VARCHAR2`**. PL/SQL's `VARCHAR2` caps at 32,767 bytes, so a `VARCHAR2` body
+  fails at precisely the size the endpoint was built to serve. Assemble with
+  `dbms_lob.writeappend` or `JSON_ARRAYAGG ... RETURNING CLOB`.
+- **P17** — no request state in package globals. Under ORDS's pooled
+  connections a package variable outlives the request and leaks into the next
+  one, which is an identity-disclosure bug, not untidiness. `api-audit` scans
+  for this.
+- **P12** — chunk internal fetches with `BULK COLLECT ... LIMIT`.
+
+Bind naming: the collection template deliberately avoids `:page_size` /
+`:page_offset`, which are **reserved ORDS implicit parameter names** — see
+A7's ORDS binding section before renaming any bind.
+
 ## Stop conditions
 
 - The task asks for a path shape not covered by A1–A3 (e.g. a nested
   sub-resource, a bulk/batch endpoint) — that's a `NEEDS-DECISION`, not a
   judgment call to improvise silently.
+- The task returns a `SYS_REFCURSOR` from a collection handler — **ORDS does
+  not paginate it** (A7). Either hand-roll pagination or convert to the
+  materialized-CLOB shape these templates use; do not ship an unbounded
+  cursor and assume ORDS bounds it.
 - The task asks for real HTTP status codes on an ORDS PL/SQL handler and the
   deployed ORDS version hasn't been confirmed ≥18.3 — stop and surface this
   as a precondition, don't ship `:status_code` binds on a guess.

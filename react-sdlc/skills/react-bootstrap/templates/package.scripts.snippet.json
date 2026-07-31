@@ -1,10 +1,26 @@
 {
-  "_comment": "Merge this scripts block into package.json. Do not replace the whole scripts object — first check for existing scripts (a deploy target, a legacy dev-server variant, etc.) that duplicate or conflict with these, and flag them for a human decision per react-bootstrap/SKILL.md's 'auditing for dead parallel implementations' note rather than silently overwriting them.",
+  "_comment": "Merge this block into package.json. Do NOT replace the whole scripts object — first check for existing scripts (a deploy target, a legacy dev-server variant) that duplicate or conflict with these, and flag them for a human decision per react-bootstrap/SKILL.md's 'dead parallel implementations' note rather than silently overwriting them.",
+
+  "_comment_build": "`build` runs typecheck BEFORE bundling. Vite transpiles without type-checking, so `vite build` alone happily ships code that `tsc` would reject — the error then surfaces at runtime in a browser instead of at build time.",
+
+  "_comment_gate": "react-verify gates on `typecheck` + a diff-scoped `lint`. It deliberately does NOT bundle; run `build` by hand when a diff touches vite config, tsconfig paths, an alias, an asset import, or an env read.",
+
+  "_comment_engines": "The engines floor is not a preference: react-router@8.3.0 declares engines.node >=22.22.0 (fetched 2026-07-31). Without this, a teammate on older Node gets a confusing runtime failure instead of a clear install-time error.",
+
+  "engines": {
+    "node": ">=22.22.0"
+  },
+
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   }
 }

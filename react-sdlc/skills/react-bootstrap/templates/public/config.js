@@ -23,6 +23,15 @@
 // committed file supplies the same shape with safe local defaults, meaning
 // `npm run dev` behaves identically whether or not a container entrypoint has
 // ever touched this file.
+// KEY SHAPE IS LOAD-BEARING. These names are SCREAMING_SNAKE because the
+// container entrypoint substitutes them from environment variables of the
+// same name. src/shared/config/env.ts treats this object as a WIRE FORMAT and
+// translates it to camelCase exactly once — the same discipline react-slice
+// applies to DTOs. Rename a key here and you must rename it in env.ts's
+// schema; nothing else in the app reads these names.
+//
+// Values may arrive as STRINGS from envsubst, which is why env.ts coerces the
+// numeric field rather than requiring a real number.
 window.__ENV__ = {
   // Relative path — resolved by the dev server's own proxy in dev, and by
   // nginx's /api/ location in the built/containerized app. Never an absolute
@@ -30,4 +39,6 @@ window.__ENV__ = {
   API_BASE_URL: '/api',
   ENVIRONMENT: 'development',
   APP_VERSION: 'dev',
+  REQUEST_TIMEOUT_MS: 30000,
+  FEATURE_FLAGS: {},
 };

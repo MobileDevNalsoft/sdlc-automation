@@ -1,54 +1,28 @@
-// eslint.config.js — ESLint flat config (ESLint 9/10-compatible).
-// Two profiles (greenfield / adopt-in-place) share this file's SHAPE; the
-// delta between profiles is dependency VERSIONS (react-bootstrap/SKILL.md's
-// version table), not this file's structure.
-//
-// Pin exact versions in package.json devDependencies (not ^ranges — a config
-// this deliberately narrow is only as safe as its pins). Verify current
-// numbers with `npm view <package> version` rather than copying old ones:
-//   eslint, @eslint/js, typescript-eslint, eslint-plugin-import-x,
-//   eslint-plugin-jsx-a11y, eslint-plugin-react-hooks,
-//   eslint-plugin-react-refresh, @tanstack/eslint-plugin-query
-
+// eslint.config.js — ESLint flat config, ESLint 10.
 import js from '@eslint/js';
-// TRAP 1 — DO NOT let this float to `latest`.
-// `@eslint/js`'s npm `latest` dist-tag always tracks the current ESLint
-// major. If this package is ever added/upgraded with
-// `npm install @eslint/js@latest` or a bare `^` range gets bumped by an
-// unrelated `npm update`, it can silently jump a major and this whole config
-// can start failing to load or changing rule defaults out from under you.
-// Hand-pin the exact version you tested against.
+// TRAP 1 — DO NOT let this float to `latest`. `@eslint/js`'s npm `latest`
+// dist-tag always tracks the current ESLint major, so a bare `^` range or an
+// unrelated `npm update` can jump a major and change rule defaults, or fail
+// to load, out from under you. Hand-pin the exact version you tested against.
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import importX from 'eslint-plugin-import-x';
+import boundaries from 'eslint-plugin-boundaries';
 import tanstackQuery from '@tanstack/eslint-plugin-query';
 import globals from 'globals';
 
 export default tseslint.config(
-  {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      // Add any other build/tooling-artifact directories your project
-      // actually produces (coverage/, .cache/, etc.) — don't carry forward
-      // an ignore entry for a build tool your project doesn't use.
-    ],
-  },
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
-  // TRAP 2 — this is an ARRAY, not a single config object.
-  // @tanstack/eslint-plugin-query's flat-config export
-  // (`tanstackQuery.configs['flat/recommended']`) is an *array* of config
-  // objects. Spread it into the tseslint.config(...) call with `...` — do NOT
-  // nest it as `{ ...tanstackQuery.configs['flat/recommended'] }` or push it
-  // as one entry. Nesting it silently produces a malformed single config
-  // object that ESLint either rejects or partially applies, and the failure
-  // mode is quiet (fewer rules firing), not a hard error — easy to miss in
-  // review.
+  // TRAP 2 — this is an ARRAY, not a single config object. Spread it with
+  // `...`. Nesting it as one entry produces a malformed config that ESLint
+  // partially applies — the failure is quiet (fewer rules firing), not a hard
+  // error, so it survives review easily.
   ...tanstackQuery.configs['flat/recommended'],
 
   {
@@ -57,72 +31,128 @@ export default tseslint.config(
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: globals.browser,
-      parserOptions: {
-        ecmaFeatures: { jsx: true },
-        // Deliberately NOT type-aware linting (no `project`/`projectService`)
-        // by default — type-aware rules typically roughly double lint run
-        // time because they load the full TypeScript program/checker. Turn
-        // it on selectively for specific high-value rules once you've
-        // measured the cost against your own codebase, not repo-wide by
-        // default.
-      },
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      // Deliberately NOT type-aware by default: type-aware rules load the full
+      // TS program and roughly double lint time. Enable selectively once
+      // measured against your own codebase.
     },
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
       'jsx-a11y': jsxA11y,
       'import-x': importX,
+      boundaries,
+    },
+    settings: {
+      // ---- THE LINE THAT MAKES THE BOUNDARY RULE ACTUALLY WORK -----------
+      // Without a TypeScript-aware resolver, eslint-plugin-boundaries falls
+      // back to the Node resolver, which resolves .js/.json but NOT .ts/.tsx.
+      // Every import then classifies as an UNKNOWN element, no policy matches,
+      // and the rule reports zero violations on a flagrantly broken import —
+      // a silent no-op that looks exactly like a passing gate.
+      // VERIFIED: removing this block makes the deliberate cross-feature
+      // import below report clean; adding it makes the same file error.
+      'import/resolver': {
+        typescript: { alwaysTryTypes: true, project: './tsconfig.json' },
+      },
+
+      // ---- Feature-folder boundaries -------------------------------------
+      // ORDER MATTERS: eslint-plugin-boundaries takes the FIRST matching
+      // element type, so the more specific `features/*` pattern must precede
+      // any broader one.
+      'boundaries/elements': [
+        { type: 'app', pattern: 'src/app/**/*' },
+        { type: 'feature', pattern: 'src/features/*/**/*', capture: ['featureName'] },
+        { type: 'shared', pattern: 'src/shared/**/*' },
+        { type: 'styles', pattern: 'src/styles/**/*' },
+      ],
+      'boundaries/ignore': ['**/*.test.*', '**/*.spec.*', 'src/main.tsx'],
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // allowConstantExport: many codebases export a constant alongside a
-      // component/hook from the same module (a query-key factory next to its
-      // hook, a context object next to its provider) — without this,
-      // react-refresh flags every one of those as a fast-refresh boundary
-      // violation.
+      // allowConstantExport: exporting a query-key factory or context object
+      // beside its hook is normal and is not a fast-refresh defect.
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       ...jsxA11y.configs.recommended.rules,
+
       'import-x/no-duplicates': 'error',
       'import-x/no-self-import': 'error',
+      // Off by default — measure the cost against your own import graph before
+      // making it a gate rule; it is expensive on a large graph.
       'import-x/no-cycle': 'off',
-      // ^ Off by default — turn on and measure the hit count against your
-      // own feature-folder import graph before committing to it as a gate
-      // rule; it can be expensive to compute on a large graph.
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'off',
-      // ^ Off by default here — many codebases' DTO boundary layer
-      // (feature/api/*.transformers.ts) leans on `as any` at the raw-response
-      // edge deliberately, to isolate an untyped wire format from the typed
-      // domain model. If your project doesn't have that pattern, turn this
-      // rule back on; it isn't a universal default, it's an escape hatch for
-      // one specific boundary.
+
+      // THE boundary rule. `default: 'disallow'` is what makes this a real
+      // gate: anything not explicitly allowed is an error, so a new element
+      // type added later fails closed rather than silently passing.
+      //
+      // v7 SYNTAX. The rule was renamed (`element-types` -> `dependencies`),
+      // `rules` became `policies`, selectors became objects, and the capture
+      // template changed from `${...}` to `{{...}}`. Every tutorial and most
+      // generated configs still use the v5/v6 shape; it is accepted but only
+      // emits deprecation warnings, so a config can look fine and be legacy.
+      'boundaries/dependencies': [
+        'error',
+        {
+          default: 'disallow',
+          policies: [
+            // app/ is the composition root — it composes everything.
+            {
+              from: { element: { type: 'app' } },
+              allow: { to: { element: { types: { anyOf: ['app', 'feature', 'shared', 'styles'] } } } },
+            },
+            // A feature may import shared/ and styles/ freely...
+            {
+              from: { element: { type: 'feature' } },
+              allow: { to: { element: { types: { anyOf: ['shared', 'styles'] } } } },
+            },
+            // ...and its OWN subtree only, matched by the captured feature
+            // name. This is the line that makes features/products importing
+            // features/auth an error.
+            {
+              from: { element: { type: 'feature' } },
+              allow: {
+                to: {
+                  element: {
+                    type: 'feature',
+                    // KEY IS `captured`, NOT `capture`. A misspelled selector
+                    // key is silently IGNORED rather than rejected, which
+                    // drops the constraint and quietly allows every
+                    // cross-feature import — the rule still runs, still
+                    // reports on other violations, and looks healthy.
+                    captured: { featureName: '{{from.captured.featureName}}' },
+                  },
+                },
+              },
+            },
+            // shared/ is the bottom layer: it may not depend on app/ or on any
+            // feature, or the graph inverts and every feature transitively
+            // drags in every other one.
+            {
+              from: { element: { type: 'shared' } },
+              allow: { to: { element: { types: { anyOf: ['shared', 'styles'] } } } },
+            },
+          ],
+        },
+      ],
+
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
 
-  // Build-tool/Node-context config files run under Node, not the browser.
+  // The app layer legitimately imports each feature's public surface to build
+  // the route table; features still may not import each other.
   {
-    files: ['vite.config.ts', 'postcss.config.js', 'tailwind.config.js', 'scripts/**/*.cjs', 'scripts/**/*.js'],
+    files: ['vite.config.ts', 'eslint.config.js', 'scripts/**/*.{js,cjs,mjs}'],
     languageOptions: { globals: globals.node },
-  }
+  },
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Feature-folder boundaries — DOCUMENTATION ONLY. Not a lint rule here.
-  // vendored bulletproof-react docs concept on 2026-07-30, source:
-  // https://github.com/alan2207/bulletproof-react, license: MIT
-  //
-  // Intended isolation (see react-bootstrap/SKILL.md's "Folder architecture"
-  // section for the full rationale):
-  //   - A feature may import from its own subtree, and from shared/.
-  //   - A feature must NOT reach into another feature's internals directly.
-  //
-  // This is intentionally NOT enforced here by `eslint-plugin-boundaries` or
-  // an `import/no-restricted-paths`-equivalent rule by default — both are
-  // worth adopting, but some glob-based configs for these plugins have been
-  // observed to silently no-op on Windows (path normalization can run before
-  // the plugin's glob-matching ever sees the pattern, so the rule matches
-  // nothing and reports zero violations regardless of real violations
-  // present). If you adopt one, prove it fires on a deliberately-broken
-  // import in a throwaway commit on every OS your team develops on before
-  // trusting it as a gate.
-  // ─────────────────────────────────────────────────────────────────────────
+  // public/config.js is a plain browser script loaded by a <script> tag before
+  // the bundle — not a module, and not part of the TS program.
+  {
+    files: ['public/**/*.js'],
+    languageOptions: { globals: globals.browser, sourceType: 'script' },
+  }
 );

@@ -46,6 +46,20 @@ the request body, not from the resolved credential"` is a review comment;
 `"identity looks wrong here"` is not. This keeps review threads short and
 lets `api-audit` and `api-emit-handler` refer back to the same rule numbers.
 
+## Cross-references
+
+- `schema-architect:plsql-conventions` — the PL/SQL these rules get
+  implemented in. **A23 (large payloads) and P10–P14 (chunking mechanics) are
+  one decision, not two**: an endpoint that paginates correctly but assembles
+  its body into a `VARCHAR2` still fails at 32,767 bytes, which is exactly the
+  size it was built to serve.
+- `docs-architect:docs-context` — on a project's first API task, establish the
+  3-tier agent context if it is missing.
+- `docs-architect:docs-reference` — generates `docs/reference/api.md` from
+  `USER_ORDS_*`, i.e. from what is **actually deployed**. Where that disagrees
+  with the checked-in manifest it reports drift rather than picking a winner;
+  `api-architect:api-audit` owns the verdict.
+
 ## The one thing to never forget
 
 Rule **A4** is the single biggest correction this contract makes over

@@ -1,0 +1,111 @@
+# l10n.yaml
+#
+# TEMPLATE — copy to the PROJECT ROOT, i.e. next to pubspec.yaml and
+# analysis_options.yaml, NOT into lib/. `flutter gen-l10n` only looks for
+# l10n.yaml in the directory it is run from; a copy under lib/ is silently
+# ignored and the generator then falls back to its own defaults, which are not
+# these.
+#
+# WHAT THIS IS
+# The configuration for `flutter gen-l10n`, which turns lib/l10n/arb/*.arb
+# into the `AppL10n` class in lib/l10n/gen/.
+#
+# PREREQUISITE — pubspec.yaml MUST carry `generate: true`:
+#
+#   flutter:
+#     uses-material-design: true
+#     generate: true
+#
+# Verified on Flutter 3.41.6 (2026-07-30): with this file present but that
+# flag absent, `flutter gen-l10n` refuses outright with
+#   "Attempted to generate localizations code without having the flutter:
+#    generate flag turned on."
+# It is a pubspec flag, not an l10n.yaml key, so it cannot be set from here.
+#
+# ALSO REQUIRED in pubspec.yaml:
+#   flutter_localizations:
+#     sdk: flutter
+#   intl: any
+#
+# `intl: any` is deliberate and is the ONE exception to this project's
+# house style of exact pins. flutter_localizations from the SDK pins intl
+# EXACTLY at 0.20.2 (read from the installed SDK's
+# packages/flutter_localizations/pubspec.yaml on 2026-07-30), so any caret
+# constraint is a hard `flutter pub get` failure — reproduced live that day:
+#   "Note: intl is pinned to version 0.20.2 by flutter_localizations from the
+#    flutter SDK. ... So, because <pkg> depends on intl ^0.20.3, version
+#    solving failed."
+# `flutter pub outdated` will therefore report "0.20.3 available" forever.
+# That is expected noise, not a bug to fix. Do not "tidy" `any` into a caret.
+
+# Where the hand-written source strings live. One .arb per locale.
+arb-dir: lib/l10n/arb
+
+# The locale everything else is translated FROM. Its keys and placeholders
+# define the generated API; other locales that omit a key fall back to it.
+template-arb-file: app_en.arb
+
+output-localization-file: app_localizations.dart
+
+# The generated class name, and therefore what lib/l10n/l10n.dart wraps and
+# what lib/app/app.dart spreads its delegates from. Rename both if you rename
+# this.
+output-class: AppL10n
+
+# Generated code goes in its own directory, so it is obvious at a glance which
+# files are hand-written (lib/l10n/arb/, lib/l10n/l10n.dart) and which are
+# not. These generated files ARE committed — `flutter test` does not run
+# gen-l10n, so gitignoring them breaks a fresh clone until someone runs the
+# generator by hand.
+output-dir: lib/l10n/gen
+
+# Makes `AppL10n.of(context)` return a non-nullable AppL10n instead of
+# AppL10n?. The highest-value option in this file: it removes a `!` from every
+# single call site.
+nullable-getter: false
+
+# Turns the single quote into an ICU escape character. CONSEQUENCE YOU MUST
+# KNOW: a literal apostrophe in a message must then be DOUBLED — write
+# "couldn''t", not "couldn't". Getting this wrong does not error, it silently
+# eats characters. The gain is that you can escape ICU braces the same way,
+# which you will need the first time a string must render a literal '{'.
+use-escaping: true
+
+# Every message must carry an "@key" entry with a "description". Costs one
+# block per string; it is what makes the ARB actually handable to a translator
+# later instead of a wall of context-free English.
+required-resource-attributes: true
+
+# Injects this line at the top of every generated file, which is how the
+# generated code stays out of the coverage report FOREVER, with no path list
+# to maintain. Verified on 3.41.6 (2026-07-30): `flutter test --coverage`
+# lists lib/l10n/gen/*.dart in lcov.info without it and omits them with it.
+# `--coverage-package` cannot do this job — it matches PACKAGE names, not
+# paths.
+#
+# THE HEADER MUST BE A SINGLE LINE. Verified both ways: a two-line header
+# string is collapsed onto one line in the output
+# ("// coverage:ignore-file // GENERATED ...") and the directive then STOPS
+# WORKING — the files reappear in lcov.info. If you want multi-line
+# provenance, use `header-file:` instead and keep "// coverage:ignore-file" as
+# its own first line.
+header: "// coverage:ignore-file"
+
+# DELIBERATELY ABSENT: `synthetic-package`.
+#
+# The synthetic `package:flutter_gen` output was removed from the tool (landed
+# in 3.28.0-0.0.pre, stable in 3.32.0, complete removal scheduled for the next
+# stable after that, per
+# docs.flutter.dev/release/breaking-changes/flutter-generate-i10n-source,
+# fetched 2026-07-30). On 3.41.6 the removal has happened, and setting the key
+# at all — even to `false` — produces:
+#   'l10n.yaml: The argument "synthetic-package" no longer has any effect and
+#    should be removed. See http://flutter.dev/to/flutter-gen-deprecation'
+# Note that Flutter's own internationalization documentation page still
+# documented it as "Default: true" on that same date. The page is stale
+# relative to the SDK; the live CLI wins. Never emit
+# `import 'package:flutter_gen/gen_l10n/...'` either — that import is the same
+# removal seen from the consuming side.
+#
+# ALSO DELIBERATELY ABSENT: `use-deferred-loading`, which is web-only and does
+# nothing for an Android-first app.

@@ -15,6 +15,8 @@ Every recommendation below is a default you can override — but overriding it s
 
 Pick (or confirm) these values before step 1, and reuse them for every object you name in this modeling session. Don't mix conventions within one table — a lowercase table with an uppercase index looks like two tool generations collided.
 
+**This table covers DATA objects only.** Procedures, functions, packages, triggers' PL/SQL bodies, and every local identifier inside them are governed by `schema-architect:plsql-conventions` **P1–P4** (`_p` for procedures, `_f` for functions, `_pkg` for packages, `l_`/`p_`/`g_` scope prefixes). The two tables together are the complete naming contract; neither restates the other. If you are about to name a program unit, that is P1, not this section.
+
 | Parameter | Default | Notes |
 |---|---|---|
 | Table prefix | `APP_` (placeholder — substitute your project's actual registered prefix, e.g. a 2–5 letter product/module code) | Every generated example in this skill and in `schema-emit` uses `APP_` literally; treat it as find-and-replace, not a real prefix to ship. |
@@ -138,3 +140,11 @@ Fill this in during step 3, before any DDL exists. One row per FK.
 | `referred_by_customer_id` | `APP_CUSTOMER_T` | SET NULL | optional self-referencing attribution; the order remains fully meaningful if the referring customer reference is cleared |
 
 This is the shape every relationship matrix should take: name the column, name the target, pick one of the four outcomes, and write the one-sentence reason a future reader won't have to reverse-engineer from the DDL alone.
+
+## Cross-references
+
+- `schema-architect:plsql-conventions` — the program-unit half of the naming contract (`_p`/`_f`/`_pkg`, scope prefixes) plus the large-data rules (P10–P14). This skill's §0 covers data objects only; the two together are the complete contract.
+- `schema-architect:schema-emit` turns this skill's relationship matrix into DDL. Never skip straight to `CREATE TABLE`.
+- `docs-architect:docs-context` — on a project's first schema task, establish the 3-tier agent context if it is missing. **Set expectations honestly for a database repo:** tier 3 (`llmwiki/`) is the one that reliably pays off, because it is written by an agent and is language-independent. `ASSUMPTION:` **SQL/PL-SQL coverage in the tier-1 and tier-2 extractors was not verified** — both were exercised against JavaScript only (2026-07-31). If `code-review-graph build` reports `0 nodes` on a DDL-only repo, that is the unsupported-language case, not a broken install. Do not promise blast-radius answers for PL/SQL until you have confirmed the parser handles it.
+- `docs-architect:docs-reference` generates `docs/reference/schema.md` from the **live data dictionary** — which is also how deployment drift against the checked-in DDL becomes visible. That path needs no code parsing at all, so it works regardless of the above.
+- **Column comments are the schema's documentation.** `docs-reference` reports comment coverage as a percentage, so an uncommented schema shows up as a number rather than as a vague sense that the generated docs are unhelpful. Write `COMMENT ON COLUMN` as part of the DDL, not as a later cleanup that never happens.

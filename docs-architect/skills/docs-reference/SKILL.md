@@ -1,0 +1,131 @@
+---
+name: docs-reference
+description: Use to generate exhaustive reference documentation derived from a live source of truth rather than from source files — the Oracle data dictionary for schema reference (tables, columns, constraints, indexes, comments) and USER_ORDS_* views or an API manifest for endpoint reference. Produces docs/reference/schema.md and docs/reference/api.md. Refuses to guess: an object it cannot read is reported as unreadable, and drift between the checked-in contract and what is actually deployed is reported as drift, never silently reconciled.
+---
+
+# docs-reference
+
+**Verb: reference.**
+
+## The rule that makes this skill worth having
+
+**Reference documentation is generated from the deployed system, not written
+by hand and not inferred from source files.**
+
+Hand-written reference docs are wrong within a sprint — a column is added, the
+doc is not. Source-derived docs are better but still describe what *should* be
+deployed. Only the data dictionary and the ORDS dictionary views describe what
+**is**.
+
+That distinction is the whole value: if this skill's output disagrees with the
+checked-in DDL, **you have found a real deployment drift**, and that is a
+finding to report, not a discrepancy to smooth over.
+
+## Two outputs, two sources
+
+| Output | Source of truth | Fallback if unreachable |
+|---|---|---|
+| `docs/reference/schema.md` | `USER_TAB_COLUMNS`, `USER_CONSTRAINTS`, `USER_CONS_COLUMNS`, `USER_INDEXES`, `USER_IND_COLUMNS`, `USER_TAB_COMMENTS`, `USER_COL_COMMENTS` | parse checked-in DDL, and **label the whole document `SOURCE: DDL FILES, NOT VERIFIED AGAINST A DATABASE`** |
+| `docs/reference/api.md` | `USER_ORDS_MODULES`, `USER_ORDS_TEMPLATES`, `USER_ORDS_HANDLERS` | the checked-in API manifest, labelled the same way |
+
+**The fallback label is mandatory, at the top of the document, not in a
+footnote.** A reader who does not know which source produced the file cannot
+judge how much to trust it, and the whole point of this skill is trustworthy
+reference.
+
+## Column comments are the documentation
+
+`USER_COL_COMMENTS` is where a column's meaning belongs — not a wiki page that
+drifts, and not a name that has to carry meaning alone. If a table's comments
+are empty, this skill's output will be a shape with no semantics, which is a
+finding worth surfacing:
+
+```sql
+comment on column app_order_t.order_status is
+  'Lookup code from ORDER_STATUS. PENDING|SHIPPED|CANCELLED|RETURNED.';
+```
+
+**Report the comment-coverage percentage** in the generated document. A schema
+at 12% coverage produces reference docs nobody can use, and the number is what
+makes that visible rather than a vague sense that the docs are unhelpful.
+
+## Schema reference — required per table
+
+- Table name, and its comment.
+- Every column: name, type (with precision/scale and `CHAR`/`BYTE` semantics),
+  nullability, default, and comment.
+- Primary key, and how it is populated (identity vs sequence+trigger — see
+  `schema-model` §7).
+- Every foreign key: column, target, and its `ON DELETE` behaviour.
+- Unique and check constraints, with their actual expressions.
+- Indexes, with their columns and uniqueness.
+- Whether it carries the WHO columns and `ACTIVE_FLAG` (schema-model §4/§5).
+
+**Flag, don't fix.** Where a table deviates from the conventions — no
+`ACTIVE_FLAG`, a `DATE` audit column among `TIMESTAMP WITH TIME ZONE`
+siblings, an **unindexed foreign key** (schema-model §8, a real locking and
+performance trap) — record it in a "convention deviations" section. This skill
+documents; `schema-audit` is what decides whether a deviation is a defect.
+
+## API reference — required per endpoint
+
+- Method + full path, and the module it belongs to.
+- Which handler source type (`source_type_plsql` vs `source_type_query`) —
+  this determines whether ORDS paginates it (A7).
+- Parameters: path, query, body, with types and whether required.
+- The pagination class: none / offset / cursor, and the **max page size**
+  (A23 step 2). An endpoint with no documented cap is a finding.
+- Success status codes and response shape.
+- Error shape — RFC 9457 `problem+json` (A5), or the legacy always-200 shape
+  (L1) if this endpoint has not been migrated yet. **Say which**; that is the
+  migration backlog made visible.
+- Auth requirement.
+
+## Drift is a finding, not a merge conflict
+
+When the live dictionary and the checked-in contract disagree, the output
+records **both**, plainly:
+
+```markdown
+> **DRIFT** — `GET /orders` is live with a `status` query parameter that the
+> checked-in manifest does not declare.
+> Live: USER_ORDS_TEMPLATES (read 2026-07-31). Declared: api-manifest.json.
+> Not reconciled here — see api-architect:api-audit.
+```
+
+**Never pick a winner.** Which one is correct is a human decision, and
+`sdlc-core:arbitration` exists precisely so the agent that ran second does not
+silently overwrite the other.
+
+## Regeneration, not editing
+
+These files are **generated artifacts**. Put a header on each one saying so:
+
+```markdown
+<!-- GENERATED by docs-architect:docs-reference on <date> from <source>.
+     Do not hand-edit: the next run overwrites it.
+     To change a column's description, edit its COMMENT in the database. -->
+```
+
+Hand-edits to a generated file are lost silently on the next run, and the
+person who made them stops trusting the pipeline. Pointing them at the real
+lever — the column comment — is what keeps the loop closed.
+
+## What this skill does NOT do
+
+- **It does not run DDL or modify the database.** It reads dictionary views.
+  Adding a missing `COMMENT` is a `schema-emit` change, proposed to a human.
+- **It does not write prose about architecture.** That is `docs-onboarding`.
+  This skill produces the exhaustive listing that onboarding links to, which
+  is exactly why onboarding must not inline column lists.
+- **It does not judge.** Deviations are recorded; `schema-audit` and
+  `api-audit` decide.
+
+## Cross-references
+
+- `schema-architect:schema-audit` — the same dictionary views, but asking
+  "is this wrong?" rather than "what is this?"
+- `api-architect:api-audit` — owns live-vs-manifest drift detection; this
+  skill reports drift it happens to see, and defers the verdict there.
+- `docs-architect:docs-onboarding` links to these documents rather than
+  restating them.

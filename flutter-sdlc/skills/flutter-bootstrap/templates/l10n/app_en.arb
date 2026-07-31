@@ -1,0 +1,149 @@
+{
+  "@@locale": "en",
+
+  "@@x-template-notes": [
+    "TEMPLATE — copy to lib/l10n/arb/app_en.arb (the arb-dir in l10n.yaml).",
+    "ARB is JSON, so it cannot carry // comments; this array is where this",
+    "file's own instructions live. Flutter's gen-l10n ignores unknown '@@'",
+    "global attributes, so it is inert — but if a future SDK ever rejects it,",
+    "delete this block, not the strings.",
+    "",
+    "RULES THIS FILE FOLLOWS, AND WHY:",
+    "1. Every message has an '@key' block with a 'description'. l10n.yaml sets",
+    "   required-resource-attributes: true, so a message without one FAILS",
+    "   generation. It costs a line and it is the difference between a file a",
+    "   translator can work from and a wall of context-free English.",
+    "2. Apostrophes are DOUBLED (\"couldn''t\"). l10n.yaml sets",
+    "   use-escaping: true, which makes ' the ICU escape character. A single",
+    "   apostrophe does not error — it silently swallows characters. See",
+    "   loginFailed below for the one live example.",
+    "3. Keys are prefixed by feature ('login...'), with shared ones prefixed",
+    "   'action' or 'error'. There are no namespaces in ARB, so the prefix is",
+    "   the namespace. Sort new keys into the right group rather than",
+    "   appending at the end.",
+    "4. NEVER concatenate translated fragments in Dart. If a sentence has a",
+    "   variable in it, it is ONE message with a placeholder — see",
+    "   loginWelcome. Word order differs between languages and concatenation",
+    "   hard-codes English's.",
+    "",
+    "ADDING A LANGUAGE: drop app_es.arb beside this file with the same keys,",
+    "run 'flutter gen-l10n'. No Dart changes — lib/app/app.dart spreads",
+    "AppL10n.supportedLocales rather than hard-coding a list.",
+    "",
+    "AFTER EVERY EDIT: run 'flutter gen-l10n'. Nothing runs it for you —",
+    "'flutter test' in particular does not — so an edit here with no",
+    "regeneration is a getter that does not exist yet."
+  ],
+
+  "appTitle": "My App",
+  "@appTitle": {
+    "description": "The application name, shown in the OS task switcher. Only used when MaterialApp.title is switched to onGenerateTitle; by default the title comes from the per-flavor FlavorConfig.appName so a dev build can be labelled differently without being translated."
+  },
+
+  "actionOk": "OK",
+  "@actionOk": {
+    "description": "Confirm button in a dialog. Acknowledges a message; it does not commit a destructive action — use a verb for those (Delete, Sign out) so the button says what it does."
+  },
+
+  "actionCancel": "Cancel",
+  "@actionCancel": {
+    "description": "Dismiss button in a dialog or sheet. Always the non-destructive choice."
+  },
+
+  "actionRetry": "Try again",
+  "@actionRetry": {
+    "description": "Button that re-runs the failed operation. Shown by AppErrorView and AppErrorBanner. Deliberately not 'Retry': the imperative reads as an instruction to the user rather than a label on a machine state."
+  },
+
+  "errorGenericTitle": "Something went wrong",
+  "@errorGenericTitle": {
+    "description": "Headline of the full-screen failure state, used when no more specific message is available. Never shows a stack trace, an HTTP status code, or an exception type to the user."
+  },
+
+  "errorGenericBody": "Please check your connection and try again.",
+  "@errorGenericBody": {
+    "description": "Supporting line under errorGenericTitle. Names the one thing a user can actually do about it. Replace with a specific message wherever the AppError variant makes one possible."
+  },
+
+  "homePlaceholderHeadline": "Scaffold ready — replace this route",
+  "@homePlaceholderHeadline": {
+    "description": "Shown by the throwaway landing screen in lib/core/router/app_router.dart, which exists only so a freshly scaffolded app runs and so the localization chain is proven end to end. Delete this message together with that screen when the first real feature owns AppRoutes.home."
+  },
+
+  "loginHeadline": "Welcome back",
+  "@loginHeadline": {
+    "description": "Primary headline on the sign-in screen, rendered in headlineMedium. The login screen has no AppBar, so this is the top of the visual hierarchy."
+  },
+
+  "loginSubtitle": "Sign in to continue",
+  "@loginSubtitle": {
+    "description": "Supporting line under loginHeadline, rendered in bodyLarge in the onSurfaceVariant colour role. Two type sizes with a real colour-role difference is the cheapest hierarchy there is."
+  },
+
+  "loginEmailLabel": "Email",
+  "@loginEmailLabel": {
+    "description": "Label for the identifier field on the sign-in screen. The field itself carries AutofillHints.username rather than .email — that is the hint password managers key on — even though the label says Email."
+  },
+
+  "loginPasswordLabel": "Password",
+  "@loginPasswordLabel": {
+    "description": "Label for the password field on the sign-in screen."
+  },
+
+  "loginShowPassword": "Show password",
+  "@loginShowPassword": {
+    "description": "Tooltip on the reveal toggle while the password is hidden. It doubles as the button's accessibility label, which is why it is a full phrase and not 'Show'."
+  },
+
+  "loginHidePassword": "Hide password",
+  "@loginHidePassword": {
+    "description": "Tooltip on the reveal toggle while the password is visible. Also its accessibility label."
+  },
+
+  "loginSubmit": "Sign in",
+  "@loginSubmit": {
+    "description": "Label of the primary button on the sign-in screen. It stays in place while the button is loading — AppButton swaps the label for a spinner without changing the button's size — so it must not read as a progress state."
+  },
+
+  "loginEmailRequired": "Enter your email address",
+  "@loginEmailRequired": {
+    "description": "Validation message shown under the email field when it is empty on submit. Phrased as the action to take, not as an accusation ('Email is required')."
+  },
+
+  "loginEmailInvalid": "Enter a valid email address",
+  "@loginEmailInvalid": {
+    "description": "Validation message shown under the email field when the entered value is not a plausible address."
+  },
+
+  "loginPasswordRequired": "Enter your password",
+  "@loginPasswordRequired": {
+    "description": "Validation message shown under the password field when it is empty on submit."
+  },
+
+  "loginPasswordTooShort": "Password must be at least {minLength} characters",
+  "@loginPasswordTooShort": {
+    "description": "Validation message shown under the password field when the entered value is shorter than the minimum. The minimum is a placeholder rather than a hard-coded number so the rule can change in one place, in Dart, without a re-translation.",
+    "placeholders": {
+      "minLength": {
+        "type": "int",
+        "example": "8"
+      }
+    }
+  },
+
+  "loginFailed": "We couldn''t sign you in. Check your details and try again.",
+  "@loginFailed": {
+    "description": "Message shown in the inline error banner above the fields when the credentials are rejected. Deliberately does NOT say which of the two was wrong — that is a user-enumeration leak. Note the doubled apostrophe in \"couldn''t\": l10n.yaml sets use-escaping: true, so ' is the ICU escape character and a single one would silently eat the following characters."
+  },
+
+  "loginWelcome": "Welcome back, {name}!",
+  "@loginWelcome": {
+    "description": "Success confirmation naming the signed-in user, e.g. in a snackbar after the redirect to home. It is ONE message with a placeholder rather than two translated fragments joined in Dart, because word order around a name differs between languages.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ada"
+      }
+    }
+  }
+}

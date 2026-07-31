@@ -1,178 +1,733 @@
 ---
 name: react-bootstrap
-description: Use when scaffolding a brand-new React + Vite + TypeScript project (greenfield) or bringing an existing React + Vite + TypeScript project up to a defensible baseline (adopt-in-place) — emits a version-pinned dependency set, eslint.config.js, tsconfig.json, npm scripts, a containerized deploy setup with a credential-proxy pattern, runtime config via a public/config.js window global, generalized state-management/routing/folder-architecture guidance, and a react-hook-form+zod form template. Use once per project/profile, before react-slice does any vertical-slice work.
+description: Use when scaffolding a brand-new React + Vite + TypeScript project (greenfield) or bringing an existing one up to a defensible baseline (adopt-in-place) — emits a version-pinned dependency set proven to install and build together, plus a vendored src/ structure (composition root, axios client with single-flight 401 refresh and idempotent-only retry, an ApiError union, react-router 8 with a pre-mount auth guard, typed runtime config, storage behind interfaces, Zustand slices, Tailwind v4 design tokens, shared UI primitives, i18n, Vitest setup), an ESLint 10 flat config whose feature-boundary rule is PROVEN to fire, tsconfig, and a containerized deploy with a credential-proxy pattern. Use once per project/profile, before react-slice does any vertical-slice work.
 ---
 
 # react-bootstrap
 
 **Verb: scaffold.**
 
+## Before anything else: what "verified" means for this skill
+
+This matters because the sibling `flutter-sdlc:flutter-bootstrap` is explicit
+that its `templates/` tree was **never compiled as a set**. This skill is in a
+better position and says so precisely, because overclaiming here would be the
+exact dishonesty that preamble exists to prevent.
+
+**Pass 1 (2026-07-30).** Research and prose only. It produced correct guidance
+about state management, routing and folder architecture, and shipped config +
+Docker templates — but **no application code**, and the guidance was never run.
+
+**Pass 2 (2026-07-31, this revision).** A real Vite project was scaffolded in a
+scratch directory from these exact templates and driven end to end on **Node
+v24.14.1 / npm 11.11.0, Windows 11**. Three classes of claim came out of it:
+
+1. **Verified by execution.** The full dependency set installs together (389
+   packages, zero peer conflicts). `npx tsc --noEmit` exits 0. `npx eslint .`
+   exits 0. `npx vite build` exits 0 and splits each route into its own chunk.
+   `npx vitest run` passes **8/8 across 2 files**. This covers the scaffold,
+   **the `react-slice` templates** (dropped in as a real feature and compiled
+   and linted clean), and **the `forms/` templates**. Six *real* failures were
+   hit and fixed along the way — recorded below as numbered traps, not smoothed
+   away.
+2. **Verified by fetching a live source.** Every version number and peer range
+   in the table below came from the npm registry on 2026-07-31, not memory.
+3. **NOT verified.** The Docker/nginx credential-proxy templates carry their
+   own `ASSUMPTION:` markers and are gated by `react-ship`'s STOP CONDITIONS —
+   **no container was built or run in this pass.** i18n is wired and compiles,
+   but no second locale was added, so "adding a locale needs no code change" is
+   a design property, not a tested one. No browser ever rendered the app: the
+   build succeeds and components are unit-tested, but nothing here is a claim
+   about how it looks or behaves on a real screen.
+
+**The `forms/` templates did not compile before this pass, and that is worth
+stating plainly rather than quietly fixing.** Shipped in pass 1 and never
+exercised, they failed `tsc` with a genuine zod-4 input/output mismatch (see
+trap 7). Anyone who had copied them would have hit it immediately. They are now
+compiled, linted, and covered by three runtime tests asserting that validation
+actually blocks submit, rejects a malformed email, trims input, and resolves
+defaults.
+
+**The gap this pass closed.** Pass 1 documented state management, routing and
+folder architecture in prose while shipping no code for any of them, and
+`react-slice`'s `*.api.ts` template imported
+`shared/api/base-api.service` — **a file nothing emitted.** A project
+scaffolded by this skill and then sliced did not compile. That file now exists
+and is proven.
+
+## The toolchain this revision was verified against
+
+| Component | Version | How known |
+|---|---|---|
+| Node | **v24.14.1** | `node --version`, 2026-07-31 |
+| npm | **11.11.0** | `npm --version`, 2026-07-31 |
+| OS | Windows 11 | the boundary-rule proof below is Windows-specific evidence |
+
+**Node floor for the scaffold: `>=22.22.0`.** Not a preference —
+`react-router@8.3.0` declares `engines.node >=22.22.0` (fetched 2026-07-31).
+Put it in `package.json` `engines` so a teammate on an older Node gets a clear
+error rather than a runtime failure.
+
+## Procedure
+
+The executable step list. Every section below this one is reference material
+for a step here — if you are following the skill, follow these.
+
+1. **Greenfield:** `npm create vite@latest <app> -- --template react-ts`.
+   **Adopt-in-place:** skip to step 2 against the existing repo.
+2. **Install the dependency set** from `templates/package.deps.verified.json`
+   — greenfield takes the pins as-is; adopt-in-place follows the procedure in
+   "Two profiles" instead of copying those numbers.
+   **The `overrides` block is not optional: without it `npm install` fails**
+   on ESLint 10 (trap 1).
+3. **Copy the config files** — `tsconfig.json`, `eslint.config.js`,
+   `vite.config.ts`, `vitest.setup.ts`, `index.html`, and merge
+   `package.scripts.snippet.json` (including its `engines` floor).
+4. **Overlay `templates/` onto `src/`.** Each file's header names its
+   destination. `app/`, `shared/`, `styles/` arrive populated; `features/`
+   starts empty and is filled one slice at a time by `react-slice`.
+5. **Copy `templates/public/config.js`** and add `public/config.local.js` to
+   `.gitignore`.
+6. **Wire the real refresh endpoint** in `main.tsx` — the shipped
+   `wireAuthToHttpClient(() => Promise.resolve(null))` logs the user out on a
+   401 instead of recovering. It is honest, not finished.
+7. **Prove the boundary rule fires** — the two-case check in trap 2. A boundary
+   rule you have not watched fail is not a gate.
+8. **Run the four gates**: `tsc --noEmit`, `eslint .`, `vite build`,
+   `vitest run`. All four pass on the shipped templates; a failure here is
+   something the scaffold introduced into *your* repo, not a template defect.
+9. **Establish the 3-tier agent context** — `docs-architect:docs-context`,
+   `-Mode Ensure`. Deliberately after step 8: the graphs need code to graph.
+   Then `docs-architect:docs-onboarding` for `CODEBASE_ONBOARDING.md`,
+   `docs/architecture/react.md`, and the `llmwiki/` files. See "First run"
+   below.
+10. **Deploy templates** (`Dockerfile`, `docker-nginx.conf`,
+    `docker-entrypoint.d/`) — only when a container deploy is actually in
+    scope. These remain **container-untested**; `react-ship`'s STOP CONDITIONS
+    gate them.
+
 ## Two profiles, one skill
 
-Every template in this skill serves both profiles; the difference between them is dependency **versions** and how those versions get chosen, not file shape.
+- **Greenfield** — pin the exact set in `templates/package.deps.verified.json`.
+  That file is a snapshot of what was actually installed and proven together;
+  re-verify with `npm view <pkg> version` before trusting it on a new scaffold.
+- **Adopt-in-place** — a *procedure*, not a table:
+  1. Read the target repo's `package.json` for what is installed today.
+  2. Match each dependency's existing **major** unless it carries a security
+     floor — don't force an unrelated major cascade onto a repo that asked for
+     a lint config.
+  3. Tighten `^`/`~` to exact pins once the resolved version installs cleanly.
+  4. Raise a floor only where the installed range sits below a disclosed
+     advisory — check the advisory database for that exact package.
+  5. Record what changed and why wherever this project already records
+     dependency decisions.
 
-- **Greenfield** — no existing code to reconcile against. Pin the current stable major/minor of each dependency (see the version table below; verify at scaffold time — see "Keeping the version table honest").
-- **Adopt-in-place** — bringing an existing repo up to this baseline. This is a *procedure*, not a table of one project's version numbers:
-  1. Read the target repo's `package.json` to see what's actually installed today.
-  2. For each dependency, match the existing **major** version unless it carries a known security floor (see below) — don't force an unrelated major-version cascade (e.g. a new router major that itself requires a newer framework major, a newer build-tool major, and a newer runtime, all at once) onto a repo that only asked for a lint config.
-  3. Tighten `^`/`~` ranges to exact pins once you've confirmed the currently-resolved version installs cleanly.
-  4. Raise a dependency's **floor** only where the installed range is below a version with a disclosed security advisory — check the advisory database for the exact package, not from memory.
-  5. Record what you changed and why wherever this project already records dependency-upgrade decisions (changelog, PR description, ADR).
+Don't let a later re-run copy version numbers forward from a previous
+project's scaffold. Re-derive them every time.
 
-This procedure is the adopt-in-place "profile" — it produces different numbers on every project it runs against, which is the point. Don't let a later re-run of this skill quietly copy forward version numbers from a previous project's scaffold pass; re-derive them from the target repo and the current registry every time.
+## The seven traps, every one hit for real in this pass
 
-## Keeping the version table honest
+These are not hypotheticals. Each one was an actual failure or an actual
+silent no-op, with the reproduction recorded.
 
-Dependency versions age out quickly — a frozen table in a skill file goes stale the day it's written. Treat every number below as **verified via web research on 2026-07-30** and re-verify before trusting it on a new scaffold:
+### Trap 1 — `eslint-plugin-jsx-a11y` does not support ESLint 10, and `npm install` fails
+
+Reproduced verbatim:
 
 ```
-npm view <package> version          # latest published version
-npm view <package> versions --json  # full history, for checking a specific line (e.g. 6.x vs 7.x)
-npm view <package> peerDependencies  # what it actually requires
+npm error peer eslint@"^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9"
+npm error   from eslint-plugin-jsx-a11y@6.10.2
 ```
 
-| Slot | Greenfield (verified 2026-07-30) | Adopt-in-place | Notes |
-|---|---|---|---|
-| react / react-dom | 19.2.8 | match installed major; tighten range | Verified via npm registry / react.dev. |
-| vite | 8.1.3 | match installed major; raise only to close a disclosed CVE | Verified via vite.dev/releases. |
-| typescript | 6.0.x line — **not** the newest 7.0.2 | same reasoning applies | See "Why not the newest TypeScript" below. |
-| router | `react-router` (not `-dom`), current 7.x line, if the target's React major is 18; `react-router` 8.x only if React major is >=19 | branch on the *target repo's* installed React major | react-router 8 requires React >=19.2.7, Node >=22.22, and Vite 7+ (Framework Mode), and ships ESM-only — verified via its own changelog/migration docs. Don't install v8 against a React 18 project; that combination is unsupported, not merely untested. |
-| server state | `@tanstack/react-query`, current 5.x | same | Ships very frequent patch releases (near-weekly at verification time) — pin whatever 5.x patch `npm view` returns at scaffold time rather than hand-copying a number from this file. |
-| client state | `zustand`, current 5.x | same, unless the installed major is 4.x and nothing forces an upgrade | v5 is the current major as of this pass; verify the exact patch at scaffold time. |
-| http client | native `fetch` **or** `axios` — see "HTTP client choice" below | keep whatever the target repo already uses | A choice point, not a version pin. |
-| styling | Tailwind CSS v4.x (Oxide engine, CSS-first config) | match installed major; v4's config format is a real breaking change from v3, so don't force that rewrite onto a repo that's stable on v3 without a scoped migration task | v4 has been GA and the de facto default for new projects since 2025; current patch (4.3) verified via web search this pass. |
-| lint | ESLint 10.x + `typescript-eslint` 8.65.0+ | see note | ESLint 9.x reaches end-of-life 2026-08-06 (verified via eslint.org's own release/migration posts) — start new projects on 10.x. `typescript-eslint` 8.65.0 is confirmed to support ESLint 10's flat-config-only world. |
-| format | Prettier (current major) + `eslint-config-prettier` | same | Not wired into react-verify's gate — formatting isn't a defect class worth blocking a merge over. |
-| test | Vitest current 4.x (4.1.10 verified) + `@testing-library/react` | same | A 5.0 beta exists (5.0.0-beta.6 at verification time) — don't pin a beta for anything that gates a merge. |
-| forms | `react-hook-form` + `zod` (+ `@hookform/resolvers`) | same, once adopted | See `templates/forms/`. |
+Its latest release is **6.10.2, published 2024-10-26** — 21 months stale, and
+the full version list and dist-tags (checked 2026-07-31) contain **no release
+and no prerelease** supporting ESLint 10.
 
-### Why not the newest TypeScript
+**This made pass 1 internally contradictory:** its `eslint.config.js` imported
+jsx-a11y while its SKILL.md said to start new projects on ESLint 10.x.
+Following both instructions produced a project that could not install.
 
-TypeScript 7.0 shipped with its compiler rewritten onto a Go-based codebase for roughly a 10x speed-up, but it shipped **without** the stable programmatic compiler API that type-aware tooling depends on. As of this pass, `typescript-eslint`'s own peer-dependency range explicitly excludes it (requires TypeScript `<6.1.0`), because its type-aware rules are built directly against that API and the fix depends on TypeScript 7.1 shipping a new one — not on typescript-eslint's side. Some teams work around this by running TypeScript 7 for `tsc` itself while pinning a side-by-side TypeScript 6.0 install purely for ESLint's type-aware rules; that's a real option but adds a second compiler version to reason about. Until 7.1 ships and the ecosystem catches up, the pragmatic "best in market today" choice for a project that also wants working lint tooling is the TypeScript 6.0.x line, not the objectively-newest 7.0.2 — newest is not always best-in-market when the surrounding tool ecosystem hasn't caught up. Re-check this before a new scaffold; this gap is expected to close.
+The fix is the `overrides` block in `package.deps.verified.json`. **And the
+override was proven to actually work, not merely to silence npm:** a fixture
+containing an `<img>` with no `alt` and a click handler on a `<div>` produced
+three jsx-a11y errors under ESLint 10.
 
-### HTTP client choice
+Staying on ESLint 9 is not the escape hatch — **it reaches end-of-life
+2026-08-06**, which is six days after this pass.
 
-Native `fetch` and `axios` both integrate fine with TanStack Query — the query/mutation layer doesn't care which one does the actual request. `fetch` costs zero bundle size and is sufficient for most REST/JSON needs (with a small wrapper for JSON parsing, error normalization, and base-URL handling). `axios` adds interceptors, more convenient error shapes, and wider legacy-environment support, at a real (if small) bundle cost. If the target repo already uses one of them, keep using that one — introducing a second HTTP client into an existing codebase costs more than either library's individual trade-offs are worth.
+### Trap 2 — the feature-boundary rule silently reports zero violations (and pass 1's diagnosis was wrong)
 
-## Principles for what NOT to include (verify before reintroducing any of these)
+Pass 1 declined to enable a boundary rule, warning that such plugins "have been
+observed to silently no-op on Windows" due to path normalization. **The caution
+was right; the cause was wrong, and the wrong cause would have sent someone
+hunting an OS bug that isn't there.**
 
-These are classes of decision that go stale or backfire in ways worth naming, not a list of banned package names:
+What actually happens: without a TypeScript-aware import resolver,
+`eslint-plugin-boundaries` falls back to the Node resolver, which resolves
+`.js`/`.json` but **not `.ts`/`.tsx`**. Every import then classifies as an
+*unknown element*, no policy matches, and the rule reports clean. **This
+happens on every OS, not just Windows.**
 
-- **Config auto-sync scripts.** A script that regenerates part of your lint/build config by scanning the filesystem (e.g. a `readdirSync()`-driven config generator) can silently *remove* a gate command the next time it runs, with no diff a reviewer would notice as "a check disappeared." Prefer an explicit, hand-edited config file over a generated one for anything that gates a merge.
-- **Glob-based import-boundary plugins, unverified.** Tools like `eslint-plugin-boundaries` or an `import/no-restricted-paths`-style rule are worth adopting (see "Folder architecture" below), but some of these plugins' glob-matching runs after the OS's own path normalization on Windows, which can silently turn a boundary rule into a no-op that reports zero violations regardless of real violations present. If you adopt one, prove it fires by deliberately breaking a boundary in a throwaway commit and confirming the rule catches it, on every OS your team actually develops on — don't trust it as a gate until you've watched it fail on a bad import.
-- **Type-aware linting by default.** Full type-aware ESLint rules typically roughly double lint run time versus syntax-only rules, because they load the TypeScript program/checker. Worth it for specific high-value rules (e.g. `no-floating-promises`); not worth enabling wholesale as a default until you've measured the cost against your own codebase's size.
-- **Blanket file-naming lint rules on an adopted codebase.** A rule like enforced kebab-case on every filename can produce hundreds of violations on day one of adopting it into an existing repo, for zero defect-catching value — it's a style preference, not a correctness gate. Apply naming conventions to new files going forward; don't retroactively fail an adoption pass over pre-existing filenames.
-- **Chasing every framework rewrite immediately.** When a tool ships a rewritten config format or engine (a CSS-first config rewrite, a new bundler core, etc.), confirm there's a working, tested migration path for *your* project's actual usage before adopting it — "the docs say it's a drop-in" and "it's a drop-in for this project's specific plugin/config combination" are different claims.
-- **Auditing for dead parallel implementations during bootstrap.** Before or during scaffolding, check for: a second, unused framework/runtime scaffold left over from an earlier prototype (e.g. an edge-runtime adapter whose imports are unused but still present in the module graph); build-tool plugins imported but never wired into the active config; `package.json` scripts that reference a deploy target nobody uses anymore. Flag these for a human decision (is that old target still in scope, or purely historical?) rather than deleting them unilaterally — that's a scope call, not a mechanical cleanup this skill should make on its own.
+Diagnosed by elimination rather than assumed:
 
-## Folder architecture: feature-based, with enforced import boundaries
+| Probe | Result | Conclusion |
+|---|---|---|
+| Deliberate `features/products` → `features/auth` import, alias form | exit 0 | rule not firing |
+| Same, rewritten as a relative import | exit 0 | **not** an alias problem |
+| `boundaries/no-unknown-files` | silent | the *importing file* IS classified |
+| `boundaries/no-unknown` | **error** | the *import target* is unknown → resolver |
 
-Organize by feature (vertical slice), not by technical layer:
+The fix is one settings block, and it is why `eslint-import-resolver-typescript`
+is a required devDependency:
+
+```js
+'import/resolver': {
+  typescript: { alwaysTryTypes: true, project: './tsconfig.json' },
+},
+```
+
+**Proof it now works, both directions:**
+
+- `features/products` importing `features/auth` → **exit 1**,
+  `There is no policy allowing dependencies from elements of type "feature" and
+  captured values: featureName="products" to elements of type "feature" and
+  captured values: featureName="auth"`.
+- A same-feature import → **exit 0**.
+
+**Re-run that two-case check whenever you touch the resolver, the aliases, or
+the elements patterns.** A boundary rule you have not watched fail is not a
+gate.
+
+### Trap 3 — `captured` vs `capture`: a misspelled selector key silently widens the rule
+
+While fixing trap 2, the rule fired on some violations but **not** on
+cross-feature imports. Cause: the selector key is **`captured`**, not
+`capture`. An unrecognized key is **silently ignored rather than rejected**, so
+the "same feature only" constraint simply vanished while the rule kept running
+and kept reporting other violations — it looked perfectly healthy.
+
+```js
+// WRONG — silently allows EVERY cross-feature import
+captured: { featureName: '{{from.featureName}}' }   // ...if spelled `capture:`
+// RIGHT
+captured: { featureName: '{{from.captured.featureName}}' }
+```
+
+This is why the two-case check in trap 2 is mandatory: a config that is 95%
+correct produces a rule that is 0% effective, with no error anywhere.
+
+### Trap 4 — eslint-plugin-boundaries v7 renamed nearly everything
+
+v7 (7.1.0, published 2026-07-20) renamed the rule and its options. The legacy
+shape still loads and only emits deprecation warnings, so **a config can look
+fine and be entirely legacy** — which is what most tutorials and most generated
+configs will hand you.
+
+| v5/v6 | v7 |
+|---|---|
+| `boundaries/element-types` | `boundaries/dependencies` |
+| `boundaries/no-unknown` | `boundaries/no-unknown-dependencies` |
+| `rules: [...]` | `policies: [...]` |
+| array selectors `['feature', {...}]` | object selectors `{ element: { type: 'feature' } }` |
+| `${from.x}` | `{{from.x}}` |
+
+### Trap 5 — TypeScript 6.0 deprecates `baseUrl`, and it is a hard error
+
+```
+tsconfig.json(20,5): error TS5101: Option 'baseUrl' is deprecated and will
+stop functioning in TypeScript 7.0.
+```
+
+`paths` resolves relative to the tsconfig without it. The template omits
+`baseUrl` entirely — do not add it back to "fix" an alias.
+
+### Trap 6 — `erasableSyntaxOnly` bans parameter properties
+
+```
+src/shared/api/base-api.service.ts(30,25): error TS1294: This syntax is not
+allowed when 'erasableSyntaxOnly' is enabled.
+```
+
+`constructor(private readonly basePath: string)` emits runtime code, so it is
+illegal under the flag. Declare the field longhand. The flag is worth keeping —
+it guarantees the TS is type-strippable, which is what Vite's esbuild transform
+and Node's native TS support both assume. Enums and namespaces are out for the
+same reason.
+
+### Trap 7 — zod `.default()` splits the input type from the output type, and breaks react-hook-form
+
+The `forms/` templates shipped in pass 1 and were never compiled. They fail:
+
+```
+Type 'Resolver<{ ...subscribed?: boolean | undefined }, any, { ...subscribed: boolean }>'
+  is not assignable to type 'Resolver<{ ...subscribed: boolean }, ...>'.
+    Type 'undefined' is not assignable to type 'boolean'.
+```
+
+**Cause.** `z.boolean().default(true)` makes the field *optional on the way in*
+and *guaranteed on the way out*. A single `z.infer` alias describes only the
+output, so `useForm<EntityFormValues>` promises the resolver an input type it
+does not accept. Any `.default()`, `.optional()`, `.catch()` or transform does
+this — it is not specific to booleans.
+
+**Fix.** Export both types and use react-hook-form's three generics, which
+exist for precisely this case:
+
+```ts
+export type EntityFormInput  = z.input<typeof schema>;   // what the form holds
+export type EntityFormValues = z.output<typeof schema>;  // what submit hands you
+
+useForm<EntityFormInput, unknown, EntityFormValues>({ resolver: zodResolver(schema) })
+```
+
+`handleSubmit` then hands the callback the **output** type. Verified against
+react-hook-form 7.83.0 + zod 4.4.3 + @hookform/resolvers 5.5.7.
+
+Two related zod-4 notes found while fixing this: `z.string().email()` is
+deprecated in favour of the top-level `z.email()` (the old form still
+compiles), and validating an email **before** trimming rejects addresses that
+arrive from autofill or paste with a trailing space — the template pipes a
+trimmed string into `z.email()` for that reason.
+
+## Why TypeScript 6.0.3 and not 7.0.2
+
+TypeScript 7.0 rewrote the compiler onto Go for roughly a 10x speed-up, but
+shipped **without** the stable programmatic compiler API that type-aware
+tooling depends on. Two independent packages exclude it, both fetched
+2026-07-31:
+
+- `typescript-eslint@8.65.0` → `typescript: ">=4.8.4 <6.1.0"`
+- `@tanstack/eslint-plugin-query@5.101.4` → `typescript: "^5.4.0 || ^6.0.0"`
+
+Two independent confirmations, not one package lagging. Some teams run TS 7 for
+`tsc` and a side-by-side TS 6 purely for ESLint; that works but adds a second
+compiler to reason about. **Newest is not best-in-market when the tooling
+around it hasn't caught up.** Re-check before a new scaffold — this gap is
+expected to close with 7.1.
+
+## Architecture: feature-sliced, with the boundary MACHINE-ENFORCED
 
 ```
 src/
-├── app/                 # composition root: providers, router, top-level layout
-├── features/
-│   └── <feature>/
-│       ├── api/         # DTO types, transformers, query/mutation hooks
-│       ├── components/  # presentation components for this feature only
-│       └── types/
-├── shared/               # cross-cutting: design-system primitives, generic hooks,
-│                         #   the HTTP client base class, common types
-└── main.tsx
+  main.tsx                     Single entrypoint. React needs only ONE (unlike
+                               flutter's three) because the flavor arrives at
+                               RUNTIME via window.__ENV__, not at build time.
+
+  app/                         <-- composition root. May import anything.
+    App.tsx                    Providers wrapped around the router. Nothing else.
+    AppLayout.tsx              Persistent shell: skip link, nav, theme class.
+    providers.tsx              ErrorBoundary > QueryClient > I18n > Suspense,
+                               in that order, each outside the next for a reason.
+    query-client.ts            Cache policy + THE COMPOUNDING-RETRY FIX.
+    router/
+      router.tsx               The ONE aggregator importing every feature.
+      RequireAuth.tsx          Guard that redirects BEFORE mount.
+      RouteErrorBoundary.tsx   Per-route, so one failure doesn't blank the app.
+
+  shared/                      <-- bottom layer. May NOT import app/ or features/.
+    api/
+      http-client.ts           The one axios instance + ORDERED interceptors.
+      auth-interceptor.ts      Single-flight 401 refresh. Tested, 5 cases.
+      retry-interceptor.ts     Idempotent methods ONLY.
+      api-error.ts             AppError union + ApiError carrier + mapper.
+      base-api.service.ts      What react-slice extends. (Was missing entirely.)
+    config/env.ts              Typed runtime config, parsed once, fails loudly.
+    navigation/routes.ts       Path constants. IN shared/, NOT app/ — see below.
+    storage/
+      key-value-store.ts       interface
+      local-storage-store.ts   the one production impl, best-effort by design
+      memory-store.ts          test double
+      token-store.ts           memory-first, with the honest XSS ranking
+      storage-keys.ts          every key string, one file
+    store/
+      auth-store.ts            session status + the AuthTokenPort wiring
+      ui-store.ts              theme/sidebar, persisted
+    ui/
+      cn.ts, Button.tsx, Spinner.tsx, ErrorView.tsx
+    i18n/
+      i18n.ts, i18next.d.ts, locales/en.json
+
+  styles/tokens.css            THE only file that defines a raw color.
+
+  features/<feature>/          <-- written by react-slice, one at a time
+    api/        {*.api.ts, *.queries.ts, *.transformers.ts}
+    components/
+    types/      {*-dto.types.ts}
 ```
 
-**Why this shape, not a technical-layer split** (`components/`, `hooks/`, `services/` at the top level): a feature-based tree keeps everything one change touches in one place. Concretely, that buys you:
-- **Blast radius** — a change to how tags work stays inside `features/products/`; a reviewer doesn't have to reason about the whole app to review it.
-- **Deletability** — removing a feature is deleting one directory, not hunting for its files scattered across `components/`, `hooks/`, and `services/`.
-- **Parallel work** — two people working on two features rarely touch the same file, because there's no shared `components/` or `hooks/` grab-bag they're both editing.
+**Why feature folders, concretely** — blast radius (a change stays in one
+directory), deletability (removing a feature is deleting a directory), and
+parallel work (two people rarely touch the same file, because there is no
+shared `components/` grab-bag).
 
-**Enforce the boundary, don't just document it.** The rule: a feature may import from its own subtree and from `shared/`; a feature must never import another feature's internals directly (`features/products/*` reaching into `features/orders/api/*`). If two features need to share something, promote it to `shared/` — that's the whole mechanism, no per-feature exceptions. Encode this with an ESLint rule (`eslint-plugin-boundaries`, or an `import/no-restricted-paths`-equivalent) once you've verified it actually fires (see the caveat above) — until then, it's a code-review checklist item, not a silently-trusted gate.
+### `routes.ts` lives in `shared/`, and the boundary rule is why
 
-`app/` sits above `features/` and does the composition: mounts the router, wraps the app in providers (query client, state store, theme), owns top-level layout. `app/` may import from any feature's public surface (typically each feature's `index.ts` barrel); features never import from `app/`.
+It was originally placed in `app/router/routes.ts`. **The boundary rule
+immediately caught it** as a real defect:
 
-## State management
+```
+error There is no policy allowing dependencies from elements of type "feature"
+and captured values: featureName="errors" to elements of type "app"
+```
 
-**Split server state from client state — don't duplicate one into the other.**
+A feature linking anywhere needs the path constants, so putting them in `app/`
+forces every feature to import the layer above it. Moving them to
+`shared/navigation/routes.ts` matches flutter-bootstrap, which puts `AppRoutes`
+in `core/` for exactly the same reason, and preserves the rule that makes the
+whole boundary enforceable:
 
-- **Server state** (anything that lives in a database/API and can go stale — a product list, a customer record) belongs to a query/cache library (TanStack Query, SWR, RTK Query — pick one; this skill assumes TanStack Query per the version table above). It owns fetching, caching, background refetch, and invalidation. Never copy a server-fetched value into a client store "for convenience" — that's a second source of truth that will drift from the first.
-- **Client state** (anything that's purely about the UI and has no server-side origin — a modal's open/closed flag, a multi-step form's current step, a sidebar's collapsed state) belongs to a lightweight client store (Zustand, or component-local `useState`/`useReducer` for state that doesn't need to be shared). Don't route ephemeral UI state through the query cache just because a query client is already in the tree.
+> **Cross-feature navigation carries no import.** Feature A navigates to
+> feature B with a **string from `shared/`**, never a symbol from feature B.
 
-**Store-slice organization.** Split a client store by concern, not into one monolithic global store: `useAuthStore`, `useUIStore`, `useThemeStore`, etc., each independently testable and independently persistable. A feature that needs client state generally owns its own slice inside `features/<feature>/` rather than adding fields to a shared store.
+Without that, every navigation would be a boundary violation and the rule would
+have to be abandoned or exempted into meaninglessness.
 
-**Selector conventions.** Always subscribe to the narrowest slice a component needs:
+## State management: server state and client state are different things
+
+- **Server state** (anything with a database/API origin that can go stale)
+  belongs to TanStack Query. It owns fetching, caching, background refetch and
+  invalidation. **Never copy a server-fetched value into a client store "for
+  convenience"** — that is a second source of truth that will drift.
+- **Client state** (a modal flag, a wizard step, a sidebar toggle) belongs to
+  Zustand, or to `useState` when it doesn't need sharing. **Don't route
+  ephemeral UI state through the query cache** just because a client is in the
+  tree.
+
+**Slices, not one global store.** `auth-store.ts` and `ui-store.ts` are
+separate so a theme change doesn't notify auth subscribers, and each is
+independently testable and persistable.
+
+**Selectors must be narrow.** A selector returning a fresh object or array
+literal allocates a new reference on every call, defeats the reference-equality
+check, and re-renders on every unrelated state change:
 
 ```ts
-// Bad — re-renders on ANY store change, and returns a fresh object every
-// render, which defeats reference-equality checks even if you *did* narrow it:
-const { user, theme } = useAppStore((s) => ({ user: s.user, theme: s.theme }));
-
-// Good — each hook call subscribes to exactly the field it needs:
-const user = useAppStore((s) => s.user);
-const theme = useAppStore((s) => s.theme);
+// Bad — new object every call; re-renders on ANY store change
+const { user, theme } = useStore((s) => ({ user: s.user, theme: s.theme }));
+// Good — one field per hook
+const user = useAuthUser();
 ```
 
-A selector that returns a freshly-constructed object or array literal (`(s) => ({ ...s.foo })`, `(s) => s.items.filter(...)`) produces a new reference on every call, which defeats the store's reference-equality check and causes a re-render on every state change regardless of whether the selected data actually changed — a common source of "why does this component re-render on every keystroke somewhere else in the app" bugs. If you need a derived/computed value, memoize it (a stable selector factory, or a library's built-in shallow-equality helper) rather than recomputing a new literal inline.
+Every store in `templates/shared/store/` exports per-field selector hooks so
+call sites get this by default instead of by discipline.
 
-**Persistence/hydration.** Persist only client state that genuinely belongs on the client (user preferences, draft form content, UI layout choices) via the store library's persistence middleware (e.g. Zustand's `persist`). Never persist server state into `localStorage` yourself — that's the query library's job (TanStack Query has its own persister mechanism if offline caching is a real requirement) and hand-rolling it reintroduces the stale-cache problem the query library exists to solve.
+**The access token is deliberately not in store state.** It lives in a
+`TokenStore` closure, so no `persist` middleware or devtools panel can
+serialize it to disk by accident. That is structural, not a rule to remember.
+
+**Persistence:** persist only genuine client state, via the store's own
+middleware, with `partialize` so actions are never serialized. Never
+hand-persist server state — that reintroduces the stale-cache problem the query
+library exists to solve.
+
+## The API layer
+
+```
+component / hook        never sees an AxiosError, ever
+  -> *.queries.ts       TanStack Query, { signal } threaded through
+    -> *.api.ts         extends BaseApiService
+      -> BaseApiService maps every failure to ApiError, then throws
+        -> httpClient   ONE axios instance
+          -> auth-interceptor   (1) stamp token, single-flight 401 refresh
+          -> retry-interceptor  (2) idempotent methods only
+```
+
+**Interceptor order is load-bearing.** Axios runs response interceptors in
+registration order. Auth is installed first, so a 401 is resolved by a refresh
+before retry sees it — and 401 is not in retry's status table, so the two never
+contend. Swapping the two lines produces a client that retries an expired-token
+request three times before refreshing it once.
+
+**Single-flight refresh is the crown jewel, and it is tested.** Without it, a
+page firing six queries on mount against an expired token produces six
+concurrent refresh calls; on a backend that rotates refresh tokens, five are
+replaying a consumed token, so five fail and the user is logged out by a race
+rather than by an auth problem. `auth-interceptor.test.ts` asserts exactly this:
+three concurrent 401s produce **one** refresh call and three successful
+retries. It also covers the no-infinite-loop case, a throwing refresh
+endpoint, and the "don't refresh on a 500" case. **5/5 passing.**
+
+**Retry is idempotent-only, and that is a safety rule.** A POST that timed out
+client-side may have committed server-side; replaying it double-charges the
+card. GET/HEAD/OPTIONS by default. PUT/DELETE are idempotent *per RFC 9110* but
+only if the server implements them that way, so they are opt-in behind a flag —
+a DELETE that decrements a counter is a real thing that exists.
+
+**The compounding-retry trap.** axios retries transport failures up to 3 times.
+TanStack Query's own default is *also* 3. Left at defaults these multiply — one
+failing GET becomes up to **nine** requests, and a flaky endpoint becomes a
+self-inflicted load test. `query-client.ts` owns transport retry at exactly one
+layer and never retries an error that cannot succeed on a second attempt (404,
+403, 422). Mutations are `retry: false`.
+
+**One error type above the client.** `AppError` is a discriminated union
+(`network | timeout | canceled | unauthorized | forbidden | notFound |
+conflict | validation | rateLimited | server | unknown`); `ApiError extends
+Error` carries it on `.detail`. Throwing a bare union object would lose stack
+traces and break `instanceof Error` in error boundaries and loggers; a plain
+`Error` with only a message would lose the exhaustive `switch`. Carrying the
+union on a real Error subclass keeps both. **If a `.tsx` file imports from
+`axios`, the mapping is missing — not the component taking a shortcut.**
 
 ## Routing
 
-- **Route-tree organization.** Define the route table in one place (`app/routes.tsx` or equivalent), composed from each feature's own route fragment where the feature is large enough to warrant one. Don't scatter `<Route>` declarations across arbitrary components.
-- **Code-splitting at route boundaries.** Lazy-load each route's component (`React.lazy` + `Suspense`, or the router's own built-in lazy-loading if it has one) so a user's initial bundle doesn't include every route in the app. Route boundaries are the natural code-split points — they're already where a full page transition happens, so a loading state is expected there.
-- **Route guards / protected routes.** Implement auth-gated routes as a wrapper component or a router-level loader check that redirects before the protected component ever mounts, not as a `useEffect` inside the protected component that redirects *after* it renders — the latter causes a visible flash of protected content before the redirect fires.
-- **Loader/data-fetching boundaries.** If your router supports data loaders (route-level data fetching that runs before the route renders), use them for data the route can't render without; use component-level TanStack Query hooks for everything else (data that can render progressively, or that's fetched in response to user interaction after the route is already showing). Don't force every fetch through a loader just because the capability exists.
-- **Error boundaries per route.** Wrap each route (or a logical group of routes) in its own error boundary so a thrown error in one route's tree doesn't blank the entire app — the router's own nested-route error-boundary mechanism, if it has one, is usually the right place for this rather than a single top-level boundary.
+- **One route table**, in `app/router/router.tsx`, composed from features.
+- **Every route is lazy.** Verified in the build output: `ProductsPage`,
+  `LoginPage`, `DashboardPage` and `NotFoundPage` each land in their own chunk.
+- **Guards redirect before mount.** `RequireAuth` returns `<Navigate/>` during
+  render. The common `useEffect` version runs *after* the first render, so the
+  user sees a frame of protected content — real names, real numbers — before
+  the redirect. Screenshots capture it.
+- **A third auth state is required.** `status` is `unknown | authenticated |
+  anonymous`. Treating `unknown` as anonymous bounces an authenticated user to
+  `/login` on every refresh, because a cold reload hasn't restored the session
+  yet.
+- **Error boundaries per route**, not one at the top. A single top-level
+  boundary means any thrown error blanks the entire app, nav and all, and the
+  only recovery is a full reload.
+
+**Router pin branches on the target's React major.** React 18 → `react-router`
+7.x (migrate `from 'react-router-dom'` to `from 'react-router'`; see
+`templates/router-migration-example.tsx`). React >=19 → `react-router` 8.x.
+Never install v8 against React 18: `react-router@8.3.0` declares peers
+`react >=19.2.7`, `react-dom >=19.2.7`, and `engines.node >=22.22.0` (fetched
+2026-07-31) — that combination is unsupported, not merely untested.
+
+## Storage, and the honest limit of "secure" on the web
+
+**The browser has no Keychain.** flutter_secure_storage maps to
+Keystore/Keychain on device; there is no web equivalent. Anything reachable
+from JavaScript is reachable from injected JavaScript. `token-store.ts` ranks
+the options in its own header rather than pretending otherwise:
+
+1. **Best** — refresh token in an `httpOnly; Secure; SameSite` cookie the JS
+   never touches, access token **in memory only**. This is the default. An XSS
+   can still act as the user while it runs, but cannot read the refresh token
+   or persist access past unload.
+2. **Weaker** — access token in `sessionStorage`: survives reload, readable by
+   any injected script, gone when the tab closes.
+3. **Weakest** — anything in `localStorage`: readable by any injected script
+   and persists indefinitely, so one XSS is a durable account compromise.
+
+`createPersistentTokenStore` implements (2)/(3) and exists because some
+backends genuinely cannot issue cookies. It is **labelled, not hidden**, so
+choosing it is a decision someone made rather than drifted into.
+
+`local-storage-store.ts` swallows and reports every failure rather than
+throwing, because all three realistic failure modes are environmental: Safari
+Private Browsing historically throws on the first `setItem`; blocked site data
+makes `localStorage` throw on property *access*; storage can be full from
+another app on the same origin. A crashed app is worse than an unsaved sidebar
+preference — so **nothing that must not be lost may live there.**
+
+## Design tokens
+
+`styles/tokens.css` is the only file allowed to define a raw color — the direct
+parallel of flutter's `app_colors.dart`. Tailwind v4 is CSS-first, so `@theme`
+replaces v3's `tailwind.config.js` entirely and each token becomes a real
+utility (`--color-surface` → `bg-surface`). Colors are oklch: perceptually
+uniform, so a lightness ramp reads evenly rather than bunching in the blues.
+
+**Semantic tokens are what features use.** The brand ramp exists so the
+semantic layer can be derived from it; a feature writing `bg-brand-600`
+directly, or worse `bg-[#1e293b]`, is the same defect as a Flutter feature
+writing a raw `Color` literal. Dark mode re-points **only** the semantic
+tokens, which is exactly why that rule matters.
+
+Dark mode is class-based (`.dark` on `<html>`) rather than
+`prefers-color-scheme` alone, because otherwise "system" would be the only
+option a user could have.
+
+## Testing
+
+- **`happy-dom`, not `jsdom`, is the default environment** — and this is a
+  verified constraint, not taste. `jsdom@30.0.1` declares
+  `engines.node ^22.22.2 || ^24.15.0 || >=26.0.0`, and Node v24.14.1 produced a
+  real `EBADENGINE` warning on every install. happy-dom needs only `>=20` and
+  is faster. If you want jsdom, raise your Node floor deliberately.
+- `msw` is pinned for feature-level tests. Interceptor unit tests deliberately
+  use **no mocking library at all** — axios lets you replace its adapter, so
+  the real interceptor chain runs and only the network is faked. That avoids
+  `axios-mock-adapter`, whose latest release (2.1.0) is from 2024-10-09.
+- Priority order for a new scaffold: the auth interceptor test ships working;
+  add a text-scale/zoom test and an a11y assertion early. In the flutter pass,
+  the equivalent text-scale test caught a real overflow in already-reviewed
+  code and was the highest-yield check in the whole scaffold.
 
 ## Templates in this skill
 
 | File | Purpose |
 |---|---|
-| `templates/eslint.config.js` | Flat config, ESLint 10-compatible. Two load-bearing trap comments inline (see below). |
-| `templates/tsconfig.json` | Baseline strict config; the strict-flag ladder lives here as commented-out entries owned by react-verify. |
-| `templates/package.scripts.snippet.json` | Adds `dev`/`build`/`preview`/`typecheck`/`lint` scripts. |
-| `templates/Dockerfile` | Two-stage build with a `BASE_PATH` ARG and the credential-proxy pattern wired in. Every behavior it depends on but that hasn't been confirmed against a real container is marked inline with an `ASSUMPTION:` tied to a numbered react-ship STOP CONDITION. |
-| `templates/docker-nginx.conf` | SPA fallback, cache headers, gzip, security headers, plus a generic `/api/` proxy location that injects an auth header server-side. |
-| `templates/docker-entrypoint.d/50-inject-api-auth.sh` | Reads an API credential from a Docker secret (or env var fallback) at container start and writes the header nginx includes. |
-| `templates/public/config.js` + `templates/public/config.local.example.js` | Runtime `window.__ENV__` pattern with committed dev defaults and a gitignored local override. |
-| `templates/forms/schema.ts`, `useEntityForm.ts`, `EntityForm.tsx` | react-hook-form + zod, worked example against a generic `<Entity>` (a "Customer" contact form, standing in for any entity). |
-| `templates/router-migration-example.tsx` | The mechanical import-source change the router-version branching above requires when it applies. |
-| `templates/project-tree.md` | Full tree for both profiles; vendors bulletproof-react's folder-layout **concept only** (see its header for provenance). |
-
-## The two ESLint traps (encoded as literal comments in the template — read them there, not just here)
-
-1. `@eslint/js`'s `latest` dist-tag tracks whatever ESLint major is current — if this package is ever bumped via a bare `^` range or an unrelated `npm install @eslint/js@latest`, it can jump a major and change rule defaults or fail to load. Hand-pin the exact patch you tested against.
-2. `@tanstack/eslint-plugin-query`'s flat-config export (`configs['flat/recommended']`) is an **array**, not a single config object — it must be spread with `...`, not nested as one entry, or rules silently drop out with no hard error.
+| `package.deps.verified.json` | The proven dependency set + the load-bearing `overrides` block. |
+| `tsconfig.json` | Strict baseline. No `baseUrl` (trap 5); `erasableSyntaxOnly` on (trap 6). Strict-flag ladder is react-verify's. |
+| `eslint.config.js` | ESLint 10 flat config. Boundary rule **proven to fire**; TS resolver block is mandatory (trap 2). |
+| `vite.config.ts` | React + Tailwind v4 plugins, `@` alias, vitest config. |
+| `vitest.setup.ts` | Seeds `window.__ENV__` before any module parses it. |
+| `index.html` | Loads `config.js` before the bundle. |
+| `main.tsx` | Entrypoint; wires the token port before first render. |
+| `app/**` | Composition root, layout, providers, query client, router, guards. |
+| `shared/api/**` | Client, both interceptors, error union, base service, the interceptor test. |
+| `shared/config/env.ts` | Typed runtime config; translates the SCREAMING_SNAKE wire shape once. |
+| `shared/storage/**`, `shared/store/**`, `shared/ui/**`, `shared/i18n/**`, `shared/navigation/routes.ts` | See the tree above. |
+| `styles/tokens.css` | Design tokens. |
+| `Dockerfile`, `docker-nginx.conf`, `docker-entrypoint.d/50-inject-api-auth.sh` | Credential proxy. **Not container-tested — see react-ship's STOP CONDITIONS.** |
+| `public/config.js`, `public/config.local.example.js` | Runtime config defaults. |
+| `forms/**` | react-hook-form + zod wiring, plus `EntityForm.test.tsx`. Compiles, lints, and 3 runtime tests pass. Read schema.ts's input/output note before changing the schema (trap 7). |
+| `router-migration-example.tsx` | The `react-router-dom` → `react-router` import change. |
+| `project-tree.md` | Full tree, both profiles. |
 
 ## The security fix this profile exists to ship: never send a credential to the browser
 
-The class of problem: a Vite (or any bundler's) `import.meta.env.VITE_*`-style variable is **inlined at build time** into the shipped JS bundle. Any credential read this way — a backend API's basic-auth password, a third-party service key — becomes a plaintext string in a file served to every browser that loads the app, readable via view-source or devtools by anyone with the deployed URL. This is true regardless of variable-naming convention; prefixing it differently or reading it through a different mechanism doesn't change where the bytes end up.
+A bundler's `import.meta.env.VITE_*` value is **inlined at build time** into the
+shipped JS. Any credential read that way is a plaintext string in a file served
+to every browser, readable via view-source. Naming or prefixing it differently
+does not change where the bytes end up.
 
-**The fix is NOT a `window.__ENV__` runtime global.** That only relocates the same browser-reachable value to a different property on `window` — still readable from dev tools, still shipped to every browser. Moving a secret from a build-time-inlined constant to a runtime-injected global is a cosmetic change, not a security fix, because the browser is still the thing holding the secret.
+**The fix is NOT a `window.__ENV__` global.** That relocates the same
+browser-reachable value to a different property on `window` — still readable
+from devtools, still shipped to every browser. Moving a secret from a
+build-time constant to a runtime global is cosmetic.
 
-**The actual fix**: terminate authentication at a reverse proxy the browser never bypasses. Implemented by `templates/Dockerfile` + `templates/docker-nginx.conf` + `templates/docker-entrypoint.d/50-inject-api-auth.sh`: nginx's `/api/` location adds the credential header itself via `proxy_set_header`, sourced from a Docker secret (or, as a documented-weaker fallback, an environment variable) read once at container start. The browser only ever talks to the container's own origin at a relative path (`/api/...`) and never sees the credential in any form — not in a bundle, not on `window`, not in a response header echoed back to it. Any backend credential currently reachable via `import.meta.env` (or the equivalent in another bundler) should be deleted from the codebase entirely once this is live — from `.env`, from any build-variant script that injects it, and from the API client config that reads it — not left in place "just in case."
+**The actual fix** is to terminate authentication at a reverse proxy the
+browser never bypasses: nginx's `/api/` location adds the credential header
+itself via `proxy_set_header`, sourced from a Docker secret (or, documented as
+weaker, an env var) read once at container start. The browser only ever talks
+to its own origin at a relative path and never sees the credential in any form.
+Any credential currently reachable via `import.meta.env` should be **deleted
+from the codebase entirely** once this is live — from `.env`, from any build
+script that injects it, and from the API client config that reads it.
 
-This pattern generalizes past "basic auth to one backend": the same shape applies to an API key, a bearer token for a service account, or any other credential a browser-run SPA would otherwise need to hold to call a backend directly.
+`env.ts` and `public/config.js` are for values already safe for the browser: a
+base URL, an environment label, a version string, feature flags. **No
+credential belongs there, ever.**
 
 ## `BASE_PATH`: parameterized subpath deployment
 
-If the app is served from a subpath (`https://example.com/some-app/` rather than the domain root), don't hardcode that subpath into `vite.config.ts`'s `base` and then mutate the source file per environment with a find-and-replace script before each build — that's a source-mutating build, and a script that edits a tracked file and reverts it afterward is one interrupted build away from committing the mutated version by accident. Instead, parameterize it: a `BASE_PATH` Docker build ARG (default `/`) passed through to `vite build --base=${BASE_PATH}`, with the built assets copied into the matching subfolder of the image's document root (see `templates/Dockerfile`). One Dockerfile, one build command, any subpath — set at build invocation time, never edited into source.
+If the app is served from a subpath, don't hardcode it into `vite.config.ts`'s
+`base` and mutate the file per environment — a script that edits a tracked file
+and reverts it is one interrupted build away from committing the mutated
+version. Parameterize: a `BASE_PATH` build ARG (default `/`) passed to
+`vite build --base=${BASE_PATH}`. The router reads it back via
+`import.meta.env.BASE_URL` as its `basename`, so routing and assets stay
+consistent with no second source of truth.
 
-## Runtime config: `public/config.js`
+## What this skill deliberately does not do
 
-Committed file with dev defaults (`templates/public/config.js`), loaded via a `<script>` tag before the app bundle, plus a gitignored `public/config.local.js` (template at `templates/public/config.local.example.js`) for a developer's personal overrides. This exists because `window.__ENV__` is normally overwritten by a container entrypoint at startup (regenerating this file from a template at container start), which lets one built image be reused across environments without a rebuild — and that entrypoint never runs under `vite dev`, so the committed defaults are what makes local dev behave the same with or without a container ever touching the file. This pattern is unrelated to, and does not replace, the credential-proxy fix above — no credential belongs in this file, ever; only values that are already safe for the browser to see (a base URL, an environment label, a version string, feature flags).
+Surveyed and rejected. Reintroducing one of these when planning a feature
+reopens a closed decision rather than building on it.
 
-## Forms: react-hook-form + zod
+- **No TanStack Router** (1.170.18, actively developed and genuinely strong).
+  Out because its typed-route story leans on a generated route tree, and this
+  marketplace's standing decision is against codegen routing — the same call
+  flutter-sdlc made rejecting `auto_route` while keeping `go_router`. **This is
+  a policy rejection, not a quality one**; it is the package to reach for if
+  the team later wants fully typed params and accepts the codegen.
+- **No native `fetch` as the client.** Settled toward axios by the plugin owner
+  this pass, for the reason flutter chose dio: interceptors are what make
+  single-flight 401 refresh and idempotent retry expressible at all. fetch
+  would need that machinery hand-built around every call site.
+- **No `class-variance-authority`** (0.7.1, published 2024-11-26, ~20 months
+  stale). `Button.tsx`'s variant map is fifteen lines. Taking a stale
+  dependency to avoid fifteen lines is a bad trade. Reach for it if variant
+  logic genuinely outgrows a lookup object.
+- **No `axios-mock-adapter`** (2.1.0, 2024-10-09) — axios's own adapter seam
+  does the job with zero dependencies, and keeps the real interceptor chain in
+  the test.
+- **No component library (shadcn/ui, Radix, Headless UI) in the default
+  scaffold.** `@radix-ui/*` and `@headlessui/react` are both healthy and
+  actively published — **not a quality rejection.** A scaffold has no business
+  choosing the product's component vocabulary before a single screen exists,
+  and the four primitives here (Button, Spinner, ErrorView, EmptyState) are
+  what the templates themselves need. Adopt Radix the moment you need a real
+  dialog, popover, or combobox — do **not** hand-roll those; focus trapping and
+  ARIA semantics are exactly where hand-rolling fails.
+- **No `@lingui/react` or `react-intl`** — both healthy; `react-i18next` was
+  chosen for the smallest setup and typed keys via `i18next.d.ts`. lingui also
+  requires `babel-plugin-macros` and Node >=22.19.
+- **No date library in the scaffold.** `date-fns` (4.4.0) and `dayjs` (1.11.21)
+  are both fine; add one when a feature needs formatting. `Intl.DateTimeFormat`
+  covers a surprising amount and is already there.
+- **No `@tanstack/react-table` in the scaffold** (8.21.3, published
+  2025-04-14 — 15 months stale, worth knowing before adopting). Add per-feature
+  if a real data grid appears.
+- **No type-aware linting by default.** Type-aware rules load the full TS
+  program and roughly double lint time. Enable specific high-value rules
+  (`no-floating-promises`) once measured against your own codebase.
+- **No config auto-sync scripts.** A config generator that scans the filesystem
+  can silently *remove* a gate command with no diff a reviewer reads as "a
+  check disappeared." Hand-edit anything that gates a merge.
+- **No blanket file-naming lint rules on an adopted codebase** — hundreds of
+  day-one violations for zero defect-catching value. Apply naming conventions
+  going forward.
+- **No React Compiler in the default scaffold.** `babel-plugin-react-compiler`
+  reached 1.0 (2025-10-07), but `eslint-plugin-react-compiler` is still
+  `19.1.0-rc.2` from 2025-05-14. Note `eslint-plugin-react-hooks@7.1.1` already
+  carries compiler-aware rules, so you get much of the lint value without
+  adopting the build step.
 
-`templates/forms/schema.ts` defines a zod schema for a generic entity (a "Customer" contact form — name, email, company, notes — standing in for whatever entity the real feature needs). `templates/forms/useEntityForm.ts` wires it through `@hookform/resolvers/zod`. `templates/forms/EntityForm.tsx` is the component. react-slice's job is to rename `useEntityForm`/`EntityForm`/the schema to the slice's real feature name and fields — this skill only ships the wiring pattern, not a feature-specific instance.
+## First run: establish the 3-tier agent context
 
-## Router pin — branches on the target's React major, not on profile name
+Before or immediately after the overlay, dispatch
+**`docs-architect:docs-context`**. It detects and creates the three context
+tiers, for a greenfield scaffold *and* for an adopt-in-place pass:
 
-If the target's React major is 18: pin the current `react-router` 7.x line, migrating any `from 'react-router-dom'` import to `from 'react-router'` (the API surface is unchanged as of the v7 line — see `templates/router-migration-example.tsx` for the mechanical diff). If the target's React major is >=19: pin `react-router` 8.x directly. Never install react-router 8 against a React 18 project — its own peer requirements (React >=19.2.7, Node >=22.22, Vite 7+, ESM-only) make that an unsupported combination, not just an untested one.
+```powershell
+./ensure-context.ps1 -Mode Detect    # report only
+./ensure-context.ps1 -Mode Ensure    # create what is missing
+```
+
+| Tier | Artifact | Who builds it |
+|---|---|---|
+| 1 AST / blast radius | `.code-review-graph/graph.db` | `code-review-graph build` |
+| 2 structural | `graphify-out/graph.json` | `graphify update .` |
+| 3 architecture memory | `llmwiki/*.md` | **an agent — there is no llmwiki tool** |
+
+**Why a scaffold ships this rather than leaving it to whoever adopts it
+later.** Every task in this pipeline is executed by an agent working through a
+context window. Without the graphs, "what breaks if I change this hook" means
+opening files until the answer appears — expensive, and on a large project it
+silently truncates, so the agent proceeds on a *partial* picture without
+knowing it. The graphs turn that into a lookup. Retrofitting them onto a mature
+codebase is a chore nobody schedules; establishing them at scaffold time costs
+one command.
+
+Two things to know before running it:
+
+- **A tier whose CLI is not installed reports `NOT RUN`, never `PASS`.** The
+  script exits non-zero if any tier is unusable, so a missing graph cannot be
+  mistaken for a built one.
+- **Tier 3 can only be *scaffolded* here.** The script writes placeholder files
+  marked `STUB`; `docs-architect:docs-onboarding` is what actually authors
+  them. A `STUB` also exits non-zero — a placeholder must not read as
+  documentation.
+
+**What to commit** (full reasoning in `docs-context`): commit `llmwiki/` and
+`graphify-out/graph.json`; **do not** commit `graphify-out/manifest.json` or
+`graphify-out/cache/**` — their keys are absolute machine paths, so they are
+useless to a teammate and rewrite on every run, conflicting on every merge.
+`.code-review-graph/` writes its own ignore rule. Add to `.gitignore`:
+
+```gitignore
+graphify-out/cache/
+graphify-out/manifest.json
+```
+
+Then dispatch **`docs-architect:docs-onboarding`** to write
+`CODEBASE_ONBOARDING.md`, `docs/architecture/react.md`, and the llmwiki files.
+On an adopted repo, that document must describe **what the code actually
+does**, not what this skill's conventions say it should — those diverge, and
+the intended-design version is the one that makes people stop trusting docs.
 
 ## Cross-references
 
-- `react-sdlc:react-slice` does the vertical-slice work (typed DTO -> transformer -> query/mutation hook -> component) on top of whatever this skill scaffolds. Don't re-derive slice conventions here.
-- `react-sdlc:react-verify` owns the gate commands and the strict-flag ladder referenced by `templates/tsconfig.json`'s commented-out block.
-- `react-sdlc:react-ship` owns the numbered STOP CONDITIONS this skill's Dockerfile/nginx templates are written against — this skill documents the assumptions at the exact line each one is used; react-ship is where they actually block a deploy until a human confirms them.
-- `sdlc-core:walkthrough` is where the human-facing summary of a bootstrap pass gets written — this skill does not write that document itself.
+- `docs-architect:docs-context` / `docs-architect:docs-onboarding` — first-run
+  context and documentation, per the section above.
+- `react-sdlc:react-slice` does the vertical-slice work on top of this
+  scaffold. Its `*.api.ts` template extends the `BaseApiService` shipped here.
+- `react-sdlc:react-verify` owns the gate commands, the strict-flag ladder
+  referenced by `tsconfig.json`, and the boundary check.
+- `react-sdlc:react-ship` owns the STOP CONDITIONS the Docker/nginx templates
+  are written against — those remain **container-untested** in this pass.
+- `sdlc-core:ui-ux-web` / `sdlc-core:ui-ux-review` own visual and interaction
+  decisions. This skill ships tokens and four primitives, not a design system.
+- `sdlc-core:walkthrough` writes the human-facing summary; this skill does not.
