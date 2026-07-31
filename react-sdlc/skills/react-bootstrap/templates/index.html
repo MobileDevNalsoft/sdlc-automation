@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- create-vite's react-ts template emits public/favicon.svg but its own
+         index.html gets fully replaced by this file — without this line the
+         browser falls back to requesting /favicon.ico, which 404s on every
+         single bootstrap since nothing ever generates that file. -->
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>App</title>
     <!-- Runtime config, loaded BEFORE the bundle so window.__ENV__ exists by

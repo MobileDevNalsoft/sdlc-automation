@@ -26,19 +26,12 @@ const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        lazy: async () => {
-          const { DashboardPage } = await import('@/features/dashboard/components/DashboardPage');
-          return {
-            element: (
-              <RequireAuth fallback={<LoadingState />}>
-                <DashboardPage />
-              </RequireAuth>
-            ),
-          };
-        },
-      },
-      {
-        path: AppRoutes.products,
+        // Every leaf below is `lazy`, so its dynamic import is always at
+        // least one tick from resolving — even in a client-only SPA with no
+        // loaders. Without a fallback for that tick, react-router warns "No
+        // HydrateFallback element provided to render during initial
+        // hydration" on every single page load.
+        hydrateFallbackElement: <LoadingState />,
         lazy: async () => {
           const { ProductsPage } = await import('@/features/products/components/ProductsPage');
           return {
@@ -52,6 +45,7 @@ const routes: RouteObject[] = [
       },
       {
         path: AppRoutes.login,
+        hydrateFallbackElement: <LoadingState />,
         lazy: async () => {
           const { LoginPage } = await import('@/features/auth/components/LoginPage');
           return {
@@ -65,6 +59,7 @@ const routes: RouteObject[] = [
       },
       {
         path: AppRoutes.notFound,
+        hydrateFallbackElement: <LoadingState />,
         lazy: async () => {
           const { NotFoundPage } = await import('@/features/errors/components/NotFoundPage');
           return { Component: NotFoundPage };

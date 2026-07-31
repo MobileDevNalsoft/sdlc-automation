@@ -12,7 +12,6 @@
 export const AppRoutes = {
   root: '/',
   login: '/login',
-  dashboard: '/dashboard',
   products: '/products',
   productDetail: (id: string): string => `/products/${id}`,
   settings: '/settings',

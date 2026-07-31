@@ -55,6 +55,37 @@ folder architecture in prose while shipping no code for any of them, and
 scaffolded by this skill and then sliced did not compile. That file now exists
 and is proven.
 
+**Pass 3 (2026-07-31, same day, a bare bootstrap with zero slices run
+end-to-end).** Pass 2's gates were run *after* `react-slice` had already
+dropped in a real feature — which hid three defects that only show up on a
+genuinely fresh scaffold, before any feature exists. Running `create-vite`,
+the dependency install, and the four gates in a real empty directory with
+nothing else done surfaced all three in the first few minutes:
+
+1. `router.tsx`'s default route table named four features
+   (`dashboard`, `products`, `auth`, `errors`) that don't exist on a bare
+   scaffold — `tsc` failed with four `TS2307` errors (trap 8). `dashboard` was
+   also redundant with `products` for demonstration purposes and is now gone;
+   `products` alone plays that role, wired to the index route.
+2. The dev server's browser console logged `Failed to load resource: 404
+   /favicon.ico` on every single load (trap 9).
+3. The dev server's browser console logged `No HydrateFallback element
+   provided to render during initial hydration` on every single load
+   (trap 10).
+
+All three are now fixed in the templates themselves, not worked around in a
+consuming project.
+
+**Pass 4 (2026-07-31, same day, actually opening the running app).** Fixing
+trap 8-10 and reloading the dev server surfaced a fourth, worse defect: the
+app never left its loading screen. No redirect to `/login`, no content —
+just `<LoadingState />`, forever (trap 11). This one had been present since
+pass 1; it was invisible earlier because nobody had gotten as far as loading
+the app in a browser and just watching it — every previous check was a
+gate (`tsc`/`eslint`/`build`/`vitest`), and none of them render the app.
+**A gate passing is not the same claim as the app working**, and this skill
+had been treating them as equivalent.
+
 ## The toolchain this revision was verified against
 
 | Component | Version | How known |
@@ -85,23 +116,36 @@ for a step here — if you are following the skill, follow these.
    `package.scripts.snippet.json` (including its `engines` floor).
 4. **Overlay `templates/` onto `src/`.** Each file's header names its
    destination. `app/`, `shared/`, `styles/` arrive populated; `features/`
-   starts empty and is filled one slice at a time by `react-slice`.
+   arrives with exactly three minimal placeholder pages (`products`, `auth`,
+   `errors` — see trap 8) so the default route table compiles and the four
+   gates pass standing on their own. `react-slice` replaces each placeholder
+   with a real feature, one at a time.
 5. **Copy `templates/public/config.js`** and add `public/config.local.js` to
    `.gitignore`.
 6. **Wire the real refresh endpoint** in `main.tsx` — the shipped
    `wireAuthToHttpClient(() => Promise.resolve(null))` logs the user out on a
-   401 instead of recovering. It is honest, not finished.
+   401 instead of recovering. It is honest, not finished. The shipped
+   `markAnonymous()` call right after it (trap 11) is the same kind of
+   placeholder: replace it with a real restore-session attempt once this
+   endpoint exists, or every session looks logged-out on load forever.
 7. **Prove the boundary rule fires** — the two-case check in trap 2. A boundary
    rule you have not watched fail is not a gate.
 8. **Run the four gates**: `tsc --noEmit`, `eslint .`, `vite build`,
    `vitest run`. All four pass on the shipped templates; a failure here is
    something the scaffold introduced into *your* repo, not a template defect.
-9. **Establish the 3-tier agent context** — `docs-architect:docs-context`,
-   `-Mode Ensure`. Deliberately after step 8: the graphs need code to graph.
-   Then `docs-architect:docs-onboarding` for `CODEBASE_ONBOARDING.md`,
-   `docs/architecture/react.md`, and the `llmwiki/` files. See "First run"
-   below.
-10. **Deploy templates** (`Dockerfile`, `docker-nginx.conf`,
+9. **Actually run `npm run dev` and load the app in a browser.** Trap 11 was
+   invisible through all four gates — none of them render anything. A gate
+   passing means the code compiles, lints, bundles, and its unit tests pass;
+   it is not evidence the app does anything when opened. Confirm the root
+   route redirects to `/login` (a fresh session has no way to be anything but
+   anonymous yet) and that the console has neither the trap-9 favicon 404 nor
+   the trap-10 `HydrateFallback` warning.
+10. **Establish the 3-tier agent context** — `docs-architect:docs-context`,
+    `-Mode Ensure`. Deliberately after step 8: the graphs need code to graph.
+    Then `docs-architect:docs-onboarding` for `CODEBASE_ONBOARDING.md`,
+    `docs/architecture/react.md`, and the `llmwiki/` files. See "First run"
+    below.
+11. **Deploy templates** (`Dockerfile`, `docker-nginx.conf`,
     `docker-entrypoint.d/`) — only when a container deploy is actually in
     scope. These remain **container-untested**; `react-ship`'s STOP CONDITIONS
     gate them.
@@ -125,10 +169,14 @@ for a step here — if you are following the skill, follow these.
 Don't let a later re-run copy version numbers forward from a previous
 project's scaffold. Re-derive them every time.
 
-## The seven traps, every one hit for real in this pass
+## The eleven traps, every one hit for real across these passes
 
 These are not hypotheticals. Each one was an actual failure or an actual
-silent no-op, with the reproduction recorded.
+silent no-op, with the reproduction recorded. Traps 1-7 came out of pass 2
+(a slice already dropped in before the gates ran); traps 8-10 only showed up
+in pass 3, running the gates on a genuinely bare scaffold with zero slices;
+trap 11 only showed up in pass 4, actually opening the app in a browser
+instead of stopping once the gates passed.
 
 ### Trap 1 — `eslint-plugin-jsx-a11y` does not support ESLint 10, and `npm install` fails
 
@@ -289,6 +337,122 @@ compiles), and validating an email **before** trimming rejects addresses that
 arrive from autofill or paste with a trailing space — the template pipes a
 trimmed string into `z.email()` for that reason.
 
+### Trap 8 — `router.tsx`'s default route table doesn't compile on a bare bootstrap
+
+Pass 2 ran the four gates *after* `react-slice` had already dropped in a real
+`products` feature, which quietly hid this. Scaffolding a project and running
+`tsc --noEmit` with **zero** slices produces:
+
+```
+src/app/router/router.tsx(30,50): error TS2307: Cannot find module
+'@/features/dashboard/components/DashboardPage' or its corresponding type
+declarations.
+```
+
+...and three more, one per feature the route table names
+(`dashboard`, `products`, `auth`, `errors`). `router.tsx` is part of `app/`,
+which the procedure says "arrives populated" — but it hard-imports four
+features that `features/` (which "starts empty and is filled one slice at a
+time") doesn't have yet. Following the procedure step-by-step, in order,
+produces a project that doesn't typecheck until `react-slice` has been run at
+least once — an undocumented ordering dependency.
+
+**Fix, in two parts:**
+
+1. `dashboard` was purely redundant with `products` for demonstration
+   purposes — both were just a protected page behind `RequireAuth`. It is
+   gone: `AppRoutes.dashboard` is removed from `routes.ts`, and the index
+   route now renders `ProductsPage` directly instead of a separate
+   `DashboardPage`. `RequireAnonymous`'s post-login redirect target moved from
+   `AppRoutes.dashboard` to `AppRoutes.root` accordingly.
+2. The three *remaining* named features (`products`, `auth`, `errors`) now
+   ship real, minimal placeholder pages —
+   `templates/features/products/components/ProductsPage.tsx`,
+   `templates/features/auth/components/LoginPage.tsx`,
+   `templates/features/errors/components/NotFoundPage.tsx` — each clearly
+   marked as a placeholder for `react-slice` to replace. `features/` is no
+   longer *empty* on a fresh scaffold; it has exactly enough to make the four
+   gates pass standing on their own, matching what the procedure already
+   claims.
+
+### Trap 9 — the favicon 404s on every single page load
+
+`create-vite`'s `react-ts` template emits `public/favicon.svg` (and
+`public/icons.svg`) and references the former from its own generated
+`index.html` via `<link rel="icon" ...>`. Step 3 of the procedure replaces
+that `index.html` wholesale with this skill's own template — which had no
+favicon link at all. The file is never missing, only unreferenced, so the
+browser falls back to requesting `/favicon.ico`, which nothing serves:
+
+```
+Failed to load resource: the server responded with a status of 404 (Not
+Found)  :5173/favicon.ico
+```
+
+**Fix.** `templates/index.html` now carries
+`<link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />`,
+using the same `%BASE_URL%` token the `config.js` script tag already relies
+on so it keeps working under a `BASE_PATH` subpath deploy.
+
+### Trap 10 — every lazy route warns "No HydrateFallback element provided" on first paint
+
+```
+⚠ No `HydrateFallback` element provided to render during initial hydration
+```
+
+**Cause.** Every leaf route in `router.tsx` uses `lazy`, and a dynamic
+`import()` is asynchronous even when its module is already cached — there is
+always at least one tick where react-router has resolved which route
+matched but has nothing to render for it yet. `RouteObject` has exactly two
+properties for that tick, `HydrateFallback` (component) and
+`hydrateFallbackElement` (element) — the docs call it a hydration concern,
+but it fires identically in a plain client-only SPA with no SSR involved,
+because the "hydration" in question is the router's own initial route
+resolution, not a server-to-client handoff.
+
+**Fix.** Each lazy route object in `router.tsx` now sets
+`hydrateFallbackElement={<LoadingState />}` alongside its `lazy` function —
+the same `LoadingState` already imported for `RequireAuth`'s `fallback` prop,
+so no new dependency.
+
+### Trap 11 — the app never leaves its loading screen, on every single bootstrap, until now
+
+The worst of the four found this pass, because every other check — `tsc`,
+`eslint`, `vite build`, `vitest run` — passed clean around it. None of them
+render the app; this one only shows up when a human actually opens it in a
+browser.
+
+**Cause.** `auth-store.ts`'s `status` deliberately starts `'unknown'` (not
+`'anonymous'`) so `RequireAuth` doesn't bounce an already-authenticated user to
+`/login` on a cold reload, before a session-restore attempt has had a chance
+to answer. But nothing in the shipped templates ever answers that question.
+`main.tsx` calls `wireAuthToHttpClient(refresh)`, which only *registers*
+`refresh` for **reactive** use — the auth interceptor calls it when some
+request comes back 401. Nothing calls it **proactively** at boot. A bare
+bootstrap's placeholder pages (trap 8) never fire a real request, so nothing
+ever 401s, so `refresh` never runs, so `status` never leaves `'unknown'`, so
+`RequireAuth` renders its `fallback` — forever. Every bootstrap hit this;
+pass 1 through 3 never opened the app far enough to see it.
+
+**Fix.** `main.tsx` now calls `useAuthStore.getState().markAnonymous()`
+immediately after wiring the token port, and before the first render:
+
+```ts
+wireAuthToHttpClient(() => Promise.resolve(null));
+useAuthStore.getState().markAnonymous();
+```
+
+With no real refresh endpoint wired yet, "no endpoint" and "no session" are
+the same fact, so resolving to `'anonymous'` immediately is honest, not
+presumptuous — it's the stub's actual behavior, stated instead of left
+implicit. Because this runs before `createRoot(container).render(...)`,
+`RequireAuth`'s very first render already sees `'anonymous'`, so it redirects
+to `/login` via `<Navigate>` — a render-time redirect, not an effect, so
+there's no flash of the stuck fallback first. **Once step 6 wires a real
+refresh endpoint, replace this line** with an actual restore-session attempt
+(call the real endpoint, `signIn(...)` on success, `markAnonymous()` on
+failure) — this default is a placeholder for that, not a substitute for it.
+
 ## Why TypeScript 6.0.3 and not 7.0.2
 
 TypeScript 7.0 rewrote the compiler onto Go for roughly a 10x speed-up, but
@@ -349,10 +513,14 @@ src/
 
   styles/tokens.css            THE only file that defines a raw color.
 
-  features/<feature>/          <-- written by react-slice, one at a time
-    api/        {*.api.ts, *.queries.ts, *.transformers.ts}
-    components/
-    types/      {*-dto.types.ts}
+  features/                    <-- react-slice replaces each placeholder below
+    products/components/ProductsPage.tsx   Placeholder: router.tsx's index route.
+    auth/components/LoginPage.tsx          Placeholder: wired to useSignIn.
+    errors/components/NotFoundPage.tsx     Placeholder: the catch-all route.
+    <feature>/                <-- react-slice adds one of these per feature
+      api/        {*.api.ts, *.queries.ts, *.transformers.ts}
+      components/
+      types/      {*-dto.types.ts}
 ```
 
 **Why feature folders, concretely** — blast radius (a change stays in one
@@ -473,7 +641,9 @@ union on a real Error subclass keeps both. **If a `.tsx` file imports from
 
 - **One route table**, in `app/router/router.tsx`, composed from features.
 - **Every route is lazy.** Verified in the build output: `ProductsPage`,
-  `LoginPage`, `DashboardPage` and `NotFoundPage` each land in their own chunk.
+  `LoginPage`, and `NotFoundPage` each land in their own chunk. Each also sets
+  `hydrateFallbackElement` (trap 10) — omit it and the router warns "No
+  HydrateFallback element provided" on every single page load.
 - **Guards redirect before mount.** `RequireAuth` returns `<Navigate/>` during
   render. The common `useEffect` version runs *after* the first render, so the
   user sees a frame of protected content — real names, real numbers — before
@@ -563,9 +733,10 @@ option a user could have.
 | `eslint.config.js` | ESLint 10 flat config. Boundary rule **proven to fire**; TS resolver block is mandatory (trap 2). |
 | `vite.config.ts` | React + Tailwind v4 plugins, `@` alias, vitest config. |
 | `vitest.setup.ts` | Seeds `window.__ENV__` before any module parses it. |
-| `index.html` | Loads `config.js` before the bundle. |
-| `main.tsx` | Entrypoint; wires the token port before first render. |
-| `app/**` | Composition root, layout, providers, query client, router, guards. |
+| `index.html` | Loads `config.js` before the bundle; also carries the favicon `<link>` (trap 9). |
+| `main.tsx` | Entrypoint; wires the token port and marks the session anonymous before first render (trap 11) — replace the latter with a real restore-session attempt once step 6's endpoint exists. |
+| `app/**` | Composition root, layout, providers, query client, router, guards. Router routes carry `hydrateFallbackElement` (trap 10). |
+| `features/products/components/ProductsPage.tsx`, `features/auth/components/LoginPage.tsx`, `features/errors/components/NotFoundPage.tsx` | Minimal placeholders so the default route table compiles on a bare bootstrap (trap 8). `react-slice` replaces each one. |
 | `shared/api/**` | Client, both interceptors, error union, base service, the interceptor test. |
 | `shared/config/env.ts` | Typed runtime config; translates the SCREAMING_SNAKE wire shape once. |
 | `shared/storage/**`, `shared/store/**`, `shared/ui/**`, `shared/i18n/**`, `shared/navigation/routes.ts` | See the tree above. |

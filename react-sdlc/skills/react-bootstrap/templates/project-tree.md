@@ -36,7 +36,11 @@ elements patterns — see react-bootstrap/SKILL.md trap 2 for the two-case check
 │   │       ├── router.tsx          # the one aggregator; every route lazy
 │   │       ├── RequireAuth.tsx     # redirects BEFORE mount
 │   │       └── RouteErrorBoundary.tsx
-│   ├── features/
+│   ├── features/                   # ships 3 placeholders (SKILL.md trap 8);
+│   │   │                           # react-slice replaces each one
+│   │   ├── products/components/ProductsPage.tsx   # placeholder: index route
+│   │   ├── auth/components/LoginPage.tsx          # placeholder: wired to useSignIn
+│   │   ├── errors/components/NotFoundPage.tsx     # placeholder: catch-all route
 │   │   └── <feature>/              # written by react-slice, one at a time
 │   │       ├── api/
 │   │       │   ├── <feature>.api.ts           # extends BaseApiService

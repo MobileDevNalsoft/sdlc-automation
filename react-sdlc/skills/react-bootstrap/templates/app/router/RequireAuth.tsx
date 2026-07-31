@@ -40,6 +40,6 @@ export function RequireAuth({ children, fallback = null }: RequireAuthProps): Re
 /** The mirror guard: keeps an authenticated user off /login. */
 export function RequireAnonymous({ children }: { children: ReactNode }): ReactNode {
   const status = useAuthStatus();
-  if (status === 'authenticated') return <Navigate to={AppRoutes.dashboard} replace />;
+  if (status === 'authenticated') return <Navigate to={AppRoutes.root} replace />;
   return children;
 }
