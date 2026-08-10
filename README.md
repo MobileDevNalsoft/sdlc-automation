@@ -1,6 +1,6 @@
 # sdlc-automation
 
-A local Claude Code plugin marketplace: **6 plugins · 4 agents · 31 skills**.
+A local Claude Code plugin marketplace: **6 plugins · 4 agents · 35 skills**.
 
 Human-triggered, agent-assisted delivery across React/web, Flutter/mobile, Oracle schema, and REST APIs. You tag work with a task; the pipeline plans it, implements one vertical slice, gates itself on build quality and security, and hands back a written walkthrough plus an uncommitted diff.
 
@@ -146,6 +146,7 @@ flowchart LR
         UW["ui-ux-web"]
         UM["ui-ux-mobile"]
         UR["ui-ux-review"]
+        DC["doc-coherence"]
     end
 
     P["@sdlc-plan"]
@@ -187,6 +188,13 @@ flowchart LR
     D ==>|"Skill tool"| AA
     BOOT["bootstrap skills · first run"] ==> DOC
     PIPE["pipeline / main loop"] ==> WK
+
+    DC ==>|"registry + propagation matrix"| DOCSET
+    subgraph DOCSET ["the document set · one registry, four artifacts"]
+        PRD["docs-architect:docs-prd"]
+        SD["schema-architect:schema-document"]
+        AC["api-architect:api-collection"]
+    end
 
     subgraph EXT ["external skills these delegate to"]
         FD["frontend-design"]
@@ -287,9 +295,9 @@ That's acceptable rather than reckless because **the release path still bundles*
 
 ---
 
-## All 26 skills
+## All 35 skills
 
-### `sdlc-core` — process (10)
+### `sdlc-core` — process (11)
 
 | Skill | Verb | Fires when |
 |---|---|---|
@@ -303,6 +311,7 @@ That's acceptable rather than reckless because **the release path still bundles*
 | `arbitration` | arbitrate | Two stages disagree. Writes `docs/decisions/` and escalates rather than letting the later agent win. |
 | `vendoring-freshness` | refresh | Copying external content. Provenance header, license check, strip persona preambles. |
 | `walkthrough` | document | Pipeline step 8. Manual-verification steps and `Not done` are both mandatory and non-empty. |
+| `doc-coherence` | reconcile | A design document changes. Owns `docs/traceability.json` — one immutable `<APP>-P<NN>` id per screen binding it to access token, tables, endpoints and collection requests — plus the propagation matrix that says which sibling documents a given change class must also edit, and `check-coherence.ps1`, which fails on seven drift codes in both directions. A traceability *section* records coherence; only a checker enforces it. |
 
 ### `react-sdlc` — web (4)
 
@@ -313,12 +322,13 @@ That's acceptable rather than reckless because **the release path still bundles*
 | `react-verify` | gate | typecheck + diff-scoped lint via `gate.ps1`, including the boundary rule and its silent-no-op re-proof. |
 | `react-ship` | release | Refuses to run until five unverified container behaviours are confirmed once. |
 
-### `docs-architect` — documentation (4)
+### `docs-architect` — documentation (5)
 
-Split by **source of truth and refresh trigger**, not by stack — four stacks × four doc types would be sixteen skills that all drift.
+Split by **source of truth and refresh trigger**, not by stack — four stacks × four doc types would be sixteen skills that all drift. The trigger split is what puts `docs-prd` and `docs-reference` at opposite ends of the same lifecycle: one is written before the code, the other generated from a deployed dictionary, and neither substitutes for the other.
 
 | Skill | Verb | What it owns |
 |---|---|---|
+| `docs-prd` | specify | The MD.050 page-level design a **business reviewer signs** — `Page Description` / `Page Design` wireframe / the fixed 10-column `Field Properties` table / `Process` / `Validations`, plus Buttons, Permissions Catalogue, Sample Roles and Notes. Rules D1–D24. The only documentation skill that works **before** any code exists. A field with no column behind it is written `GAP:`, never given a plausible `Varchar2(100)` to make the table look finished; wireframes carry real sample data because `[field]` placeholders are unreviewable. |
 | `docs-context` | index | The 3-tier agent context: `code-review-graph` (AST/blast radius), `graphify` (structural), `llmwiki/` (architecture memory). Creates them for greenfield or existing projects. `ensure-context.ps1` reports NOT RUN for an absent tool and STUB for an unauthored wiki, and exits non-zero for both — a placeholder must not read as documentation. |
 | `docs-onboarding` | onboard | One `CODEBASE_ONBOARDING.md` owning the **cross-stack request trace** (React click → ORDS → PL/SQL → table → back), plus a per-stack deep-dive for each stack actually detected. A fact lives in exactly one file; everything else links. `Flaws and risks` is a required section. |
 | `docs-reference` | reference | Exhaustive schema and API reference generated from the **live dictionary**, not from source files — so a disagreement with the checked-in DDL is real deployment drift, reported rather than reconciled. Reports column-comment coverage as a percentage. |
@@ -333,20 +343,22 @@ Split by **source of truth and refresh trigger**, not by stack — four stacks �
 | `flutter-verify` | gate | Blocking: analyze, boundaries, tests. Advisory: bloc lint, coverage ratchet. |
 | `flutter-ship` | release | Android flavors and signing, obfuscation paired with symbol retention. iOS is a documented stub. |
 
-### `schema-architect` — database (5)
+### `schema-architect` — database (6)
 
 | Skill | Verb | What it owns |
 |---|---|---|
 | `schema-model` | model | Nine-step request → DDL procedure, per-FK `ON DELETE` rationale, and the FK-indexing step Oracle doesn't do for you. Owns the naming contract for **data objects**. |
+| `schema-document` | document | The twelve-section design document a team reviews **before** DDL ships — naming legend, WHO contract, mermaid ER (full plus per-domain above 15 tables, because one diagram with 34 tables is a hairball nobody reads), full table catalog, relationship matrix, lookup seed data, traceability map, numbered assumptions, coverage report, DDL appendix. Rules S1–S22. The matrix is the spine: every FK carries an `ON DELETE` **and a rationale**, and `Standard` is a review failure. `ON DELETE` is the highest-consequence, lowest-attention decision in a schema. |
 | `plsql-conventions` | conform | Rules P1–P20: the naming contract for **program units** (`_p` procedures, `_f` functions, `_pkg` packages, `l_`/`p_`/`g_` scope prefixes) and the large-data mechanics — `BULK COLLECT ... LIMIT`, CLOB assembly, and why `l_body := l_body \|\| x` in a loop is O(n²). P17 (no request state in package globals under pooled connections) is a security rule, not a tidiness one. |
 | `schema-emit` | emit-ddl | Business, junction, and lookup templates. Identity columns for greenfield; sequence + trigger as the adopt-in-place path. |
 | `schema-audit` | audit | Four scripts written as exhaustive negative filters, so an empty result is a real pass. |
 | `schema-promote` | promote | Six-phase promotion, grants first, explicit per-object grants, invalid-object check last, rollback policy by change class. |
 
-### `api-architect` — API (4)
+### `api-architect` — API (5)
 
 | Skill | Verb | What it owns |
 |---|---|---|
+| `api-collection` | collect | A Postman v2.1 collection **and** `api.md`, generated from one manifest in one run so they cannot disagree. Rules C1–C16. Extends `api-audit`'s manifest rather than forking it — one file, two consumers, pre- and post-deployment. Every request carries a saved example (`NO EXAMPLE CAPTURED` when it doesn't, never an invented body); auth is a collection variable so `secret-scan` has nothing to find; the always-200 envelope is **labelled** legacy, not silently rewritten as `201`. Refuses to regenerate over a collection edited since it was written — generate-then-tweak-in-Postman is the workflow, so destroying those edits is the failure mode. |
 | `api-contract` | contract | Numbered rules A1–A23 so a review can cite a violation by number. Real HTTP status codes and RFC 9457 `problem+json` are the default; the always-200 pattern is a labelled legacy path. A7 carries the ORDS pagination facts (`:fetch_offset`/`:fetch_size`; `:page_size` is deprecated **and reserved**; a PL/SQL handler's ref cursor is **not** auto-paginated); A23 decides whether a collection needs bounding at all. |
 | `api-emit-handler` | emit-handler | Collection, by-id, and write-operation templates. Validation before any mutation; instrumentation at every entry point. |
 | `api-audit` | audit | Diffs the declared surface against what's actually deployed, both directions, plus a scan for request-scoped state held at module scope. |
@@ -371,9 +383,11 @@ Split by **source of truth and refresh trigger**, not by stack — four stacks �
 - **`react-sdlc`'s templates ARE execution-verified (2026-07-31).** Its full dependency set was installed together (389 packages, zero peer conflicts) and driven in a real Vite project on Node v24.14.1 / Windows 11: `tsc --noEmit`, `eslint .`, and `vite build` all exit 0, and 8/8 tests pass — covering the scaffold, the `react-slice` templates, and the `forms/` templates. Seven real failures were found and fixed in the process, including that `eslint-plugin-jsx-a11y` cannot install under ESLint 10, that the feature-boundary rule was a silent no-op, and that the `forms/` templates never compiled at all. **This is the one plugin whose "it works" claim is backed by having run it** — keep it true by re-running those four commands after editing a react template.
 - **`react-sdlc`'s container templates are still unverified.** No image was built or run; `react-ship`'s STOP CONDITIONS still gate them.
 - **Both PowerShell engines were executed and tested** — `scan-secrets.ps1` against planted secrets and placeholder bait, `dependency-audit.ps1` against a real vulnerable tree, a clean tree, a no-trigger diff, and a missing lockfile.
+- **The three documentation-set engines ARE execution-verified (2026-08-10).** `check-coherence.ps1` was driven against fixtures planting all seven drift codes plus a clean set and a missing registry, and returns 1 / 0 / 2 correctly. `emit-collection.ps1` and `audit-collection.ps1` were run against the real example manifest: six endpoints, four folders, a smoke folder, all four audit codes fired on injected drift, and the C16 refusal path was exercised across untouched / hand-edited / foreign / `-Force`. **Four real bugs were found by running them and fixed:** a literal em-dash in a `.ps1` breaks the parse outright, because Windows PowerShell 5.1 reads a BOM-less script as ANSI (all house scripts are ASCII-only — characters needed in *output* are built from code points); `Set-Content -Encoding UTF8` writes a BOM that stops a strict markdown parser seeing the leading `#`; `ConvertTo-Json` escapes `<`/`>`/`'`/`&` and pads nested arrays to the key's column, which makes a documentation payload unreadable, so the example serializer is hand-rolled; and the C16 guard originally checked only for its marker, so a hand-edit to an *already-generated* collection was destroyed silently — the marker now carries a content hash.
 - **`osv-scanner` and `gitleaks` invocations are unverified** — neither tool was available during authoring. Both report `NOT RUN` rather than degrading to a pass.
 - **Container image scanning is not wired in.** It reports `NOT COVERED`.
 - **`flutter-sdlc` was never validated against a real Flutter project.** `dart format` on its templates is the only verification it received. Every version pin carries an inline `ASSUMPTION:`.
-- **Not built:** requirements/PRD intake, document generation (docx, API reference, user guides, screenshots), SAST, and the multi-harness generator that would emit `.agent/` and `.codex/` surfaces.
+- **`docs-prd` and `schema-document` have no executable engine, by design** — they are authoring contracts (D1–D24, S1–S22), so "verified" can only mean a document was reviewed against them. Their templates have not yet produced a signed-off document. `check-coherence.ps1` is the mechanical half, and it only matches **names**: a `Field Properties` row reading `Varchar2(100)` against a `VARCHAR2(240)` column passes every check, because both documents mention the field. A green coherence run is not "the documents agree".
+- **Not built:** `docx` conversion (delegated to `pandoc`; absent, it reports `NOT RUN` and hands over markdown — wide `Field Properties` tables need landscape section breaks and fenced wireframes need a monospace style applied, both manual post-steps in Word), user guides and screenshots (`docs-guide` needs a browser tool), `newman` execution of the emitted smoke folder, SAST, and the multi-harness generator that would emit `.agent/` and `.codex/` surfaces.
 
 Requires PowerShell 5.1+ for the gate scripts (Windows). The skills themselves are platform-neutral.

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nalsoft.local/sdlc-automation/traceability.schema.json",
+  "title": "Design-document traceability registry",
+  "description": "Binds one screen (a 'unit') to the access tokens, tables, endpoints, collection requests and source files it needs. The single source for the PRD Traceability section, the schema document's traceability map, and the coherence checker.",
+  "type": "object",
+  "required": ["app", "artifacts", "units"],
+  "additionalProperties": false,
+  "properties": {
+    "app": {
+      "type": "object",
+      "required": ["code", "objectPrefix"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,19}$",
+          "description": "Application code as registered in XXCUST_APPLICATIONS_T.APPLICATION_CODE, e.g. NPT."
+        },
+        "appId": {
+          "type": ["integer", "null"],
+          "description": "XXCUST_APPLICATIONS_T.APPLICATION_ID. Null until the platform team assigns one — never invent a number."
+        },
+        "objectPrefix": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,19}$",
+          "description": "Schema object prefix, e.g. XXNPT. Drives the ORPHAN-TABLE reverse check."
+        },
+        "groupPrefix": {
+          "type": ["string", "null"],
+          "description": "IDCS screen-group prefix, e.g. NPT_. Null if the app does not use group-level screen access."
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Repo-relative paths. A path that does not resolve makes the checker exit 2 rather than silently skipping that artifact's checks.",
+      "required": ["prd", "schema", "api", "collection"],
+      "additionalProperties": false,
+      "properties": {
+        "prd": { "type": "string" },
+        "schema": { "type": "string" },
+        "api": { "type": "string" },
+        "collection": { "type": "string" }
+      }
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "screen", "prdPage", "status", "access", "tables", "endpoints", "collectionRequests"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,19}-P[0-9]{2,3}$",
+            "description": "Immutable join key, <APP>-P<NN>. Never renumbered — see doc-coherence SKILL.md."
+          },
+          "screen": { "type": "string", "minLength": 1 },
+          "prdPage": { "type": "integer", "minimum": 1 },
+          "status": {
+            "enum": ["TO BE BUILT", "BUILT", "WITHDRAWN"],
+            "description": "BUILT asserts every sourceFiles path resolves on disk; the checker enforces it."
+          },
+          "access": {
+            "type": "object",
+            "required": ["personas", "groups", "accessType", "isAdmin"],
+            "additionalProperties": false,
+            "properties": {
+              "personas": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "persona_code values in XXINT_EMP_APP_PERSONA_T. Empty means the screen is open to any employee with an active access row."
+              },
+              "groups": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "IDCS screen groups gating this screen. Empty means no group-level gate."
+              },
+              "accessType": {
+                "enum": ["V", "M"],
+                "description": "XXINT_EMP_APP_ACCESS_T.ACCESS_TYPE — V read-only, M read-write."
+              },
+              "isAdmin": {
+                "type": "boolean",
+                "description": "True when the screen requires IS_ADMIN = 'Y'."
+              },
+              "derived": {
+                "type": "array",
+                "items": { "enum": ["MANAGER", "OWNER"] },
+                "description": "Access derived at runtime rather than assigned. MANAGER = EXISTS(SELECT 1 FROM XXINT_EMPLOYEE_MASTER_T WHERE MANAGER_ID = :employee_id). OWNER = the row belongs to the caller."
+              }
+            }
+          },
+          "tables": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Every table the screen reads or writes, prefixed and central alike. Central tables (XXINT_*, XXCUST_*) are listed but exempt from the ORPHAN-TABLE reverse check."
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(GET|POST|PUT|PATCH|DELETE) /.*$"
+            },
+            "description": "METHOD SPACE PATH, e.g. 'POST /npt/leave/requests'."
+          },
+          "collectionRequests": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "'Folder / Request name' exactly as it appears in the Postman collection."
+          },
+          "sourceFiles": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Repo-relative implementation paths. Required to resolve when status is BUILT."
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

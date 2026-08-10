@@ -1,7 +1,7 @@
 {
   "name": "schema-architect",
-  "version": "2.0.0",
-  "description": "Model, emit, audit, and promote skills for Oracle schema design, codifying industry-standard naming, audit-column, soft-delete, and migration-versioning conventions as parameterized, generalized guidance rather than any single project's choices.",
+  "version": "2.1.0",
+  "description": "Model, document, emit, audit, and promote skills for Oracle schema design, codifying industry-standard naming, audit-column, soft-delete, and migration-versioning conventions as parameterized, generalized guidance rather than any single project's choices. schema-document turns the model into the twelve-section design artifact a team reviews before DDL ships, where every foreign key carries an ON DELETE behaviour and a written rationale.",
   "author": {
     "name": "madhankumar.ch"
   }

@@ -7,7 +7,7 @@
     {
       "name": "sdlc-core",
       "source": "./sdlc-core",
-      "description": "The process layer: 4 agents (plan/developer/verify/review) plus shared skills for evidence discipline, output contracts, arbitration, vendoring provenance, secret scanning, walkthroughs, and world-class UI/UX design and audit for both web and mobile."
+      "description": "The process layer: 4 agents (plan/developer/verify/review) plus shared skills for evidence discipline, output contracts, arbitration, vendoring provenance, secret scanning, walkthroughs, world-class UI/UX design and audit for both web and mobile, and doc-coherence -- the traceability registry and propagation contract that stops a PRD, a schema design, an API reference and a Postman collection from drifting apart."
     },
     {
       "name": "react-sdlc",
@@ -22,17 +22,17 @@
     {
       "name": "schema-architect",
       "source": "./schema-architect",
-      "description": "Model, emit, audit, and promote skills for Oracle schema design. Parameterized naming, audit-column, soft-delete, and migration-versioning conventions grounded in current industry practice rather than any single project's choices."
+      "description": "Model, document, emit, audit, and promote skills for Oracle schema design. Parameterized naming, audit-column, soft-delete, and migration-versioning conventions grounded in current industry practice rather than any single project's choices -- plus the twelve-section design document a team reviews before DDL ships, where every foreign key carries an ON DELETE behaviour and a written rationale."
     },
     {
       "name": "api-architect",
       "source": "./api-architect",
-      "description": "Contract, emit-handler, audit, and publish skills for REST APIs. Stack-neutral rules (real HTTP status codes, RFC 9457 problem+json, resource-oriented verbs, cursor pagination, bearer auth, idempotency, optimistic concurrency) with Oracle ORDS as the worked implementation."
+      "description": "Contract, collection, emit-handler, audit, and publish skills for REST APIs. Stack-neutral rules (real HTTP status codes, RFC 9457 problem+json, resource-oriented verbs, cursor pagination, bearer auth, idempotency, optimistic concurrency) with Oracle ORDS as the worked implementation -- and a Postman collection plus API reference generated from one manifest, so the two cannot disagree."
     },
     {
       "name": "docs-architect",
       "source": "./docs-architect",
-      "description": "Context, onboarding, reference, and guide skills for documentation generated from the codebase. Maintains the 3-tier agent context (code-review-graph, graphify, llmwiki), writes a cross-stack onboarding trace instead of four drifting per-stack docs, derives API and schema reference from the live dictionary, and produces user guides with a regenerable screenshot manifest."
+      "description": "PRD, context, onboarding, reference, and guide skills spanning a project's whole documentation lifecycle. Writes the MD.050 page-level design a business reviewer signs before any code exists, maintains the 3-tier agent context (code-review-graph, graphify, llmwiki), writes a cross-stack onboarding trace instead of four drifting per-stack docs, derives API and schema reference from the live dictionary, and produces user guides with a regenerable screenshot manifest."
     }
   ]
 }

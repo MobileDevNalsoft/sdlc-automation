@@ -1,0 +1,192 @@
+{
+  "_comment": "Extended manifest read by emit-collection.ps1 and audit-collection.ps1. A SUPERSET of api-audit/api-manifest.example.json: module_name and endpoints[].{path,method} are what audit-ords-drift.sql reads, and every other field here is optional and ignored by it (C2). One manifest, two consumers -- do not fork it.",
+
+  "module_name": "npt",
+  "collection_name": "Nalsoft Portal (NPT)",
+  "collection_description": "Employee portal API. SOURCE: API MANIFEST, NOT VERIFIED AGAINST A DEPLOYED MODULE.",
+  "base_path": "/ords/xxnpt/npt",
+
+  "auth": {
+    "type": "bearer",
+    "variable": "token",
+    "loginEndpoint": "auth/login",
+    "_comment": "loginEndpoint lets the collection ship a login request that stores the token into the collection variable, so nobody has a reason to paste a literal (C4)."
+  },
+
+  "variables": [
+    { "key": "base_url", "value": "https://paas.example.net:8433", "description": "Host and port only; base_path is appended per request." },
+    { "key": "token", "value": "", "description": "Bearer token. Populated by Auth / Login's test script -- never committed with a value." }
+  ],
+
+  "endpoints": [
+    {
+      "path": "auth/login",
+      "method": "POST",
+      "unit": "NPT-P01",
+      "folder": "Auth",
+      "name": "Login",
+      "summary": "Exchange credentials for a session token.",
+      "auth": "none",
+      "smoke": true,
+      "requestBody": {
+        "contentType": "application/json",
+        "example": { "email": "ravi.kumar@example.net", "password": "<redacted>" }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "description": "Authenticated.",
+          "exampleSource": "hand-written",
+          "example": { "token": "<opaque>", "employee_id": 1042, "is_admin": "N", "personas": ["EMPLOYEE"] }
+        },
+        {
+          "status": 401,
+          "description": "Invalid credentials. Does not disclose which field was wrong.",
+          "problem": true,
+          "exampleSource": "hand-written",
+          "example": { "type": "about:blank", "title": "Invalid credentials", "status": 401 }
+        }
+      ],
+      "postResponseScript": [
+        "var body = pm.response.json();",
+        "if (body && body.token) { pm.collectionVariables.set('token', body.token); }"
+      ]
+    },
+
+    {
+      "path": "leave/requests",
+      "method": "GET",
+      "unit": "NPT-P09",
+      "folder": "Leave",
+      "name": "List my requests",
+      "summary": "Leave requests raised by the authenticated employee, newest first.",
+      "smoke": true,
+      "queryParams": [
+        { "name": "status", "required": false, "type": "string", "description": "Filter on XXNPT_LEAVE_STATUS code.", "example": "PENDING" },
+        { "name": "fetch_offset", "required": false, "type": "integer", "description": "ORDS pagination offset (A7).", "example": "0" },
+        { "name": "fetch_size", "required": false, "type": "integer", "description": "ORDS page size (A7). :page_size is deprecated AND reserved.", "example": "25" }
+      ],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Page of requests.",
+          "exampleSource": "hand-written",
+          "example": {
+            "items": [
+              { "leave_request_id": 142, "request_number": "LR-2026-00142", "leave_type": "Earned Leave", "from_date": "2026-08-18", "to_date": "2026-08-20", "days_requested": 2.5, "status": "PENDING" }
+            ],
+            "has_more": false,
+            "offset": 0,
+            "count": 1
+          }
+        }
+      ]
+    },
+
+    {
+      "path": "leave/requests",
+      "method": "POST",
+      "unit": "NPT-P07",
+      "folder": "Leave",
+      "name": "Create request",
+      "summary": "Raise a leave request for the authenticated employee. Balance, overlap and eligibility are re-checked server-side.",
+      "requestBody": {
+        "contentType": "application/json",
+        "example": {
+          "leave_type_id": 1,
+          "from_date": "2026-08-18",
+          "to_date": "2026-08-20",
+          "first_day_half_flag": "Y",
+          "last_day_half_flag": "N",
+          "leave_reason": "Family function at hometown."
+        },
+        "_comment": "employee_id is NOT in the body -- it is resolved from the token server-side (A9)."
+      },
+      "responses": [
+        {
+          "status": 201,
+          "description": "Created. Location header carries the new resource.",
+          "exampleSource": "hand-written",
+          "example": { "leave_request_id": 142, "request_number": "LR-2026-00142", "status": "PENDING", "days_requested": 2.5 }
+        },
+        {
+          "status": 422,
+          "description": "Validation failed -- overlap, insufficient balance, or ineligible leave type.",
+          "problem": true,
+          "exampleSource": "hand-written",
+          "example": {
+            "type": "https://example.net/problems/leave-overlap",
+            "title": "Overlapping leave request",
+            "status": 422,
+            "detail": "An Approved request already covers 2026-08-20.",
+            "instance": "/npt/leave/requests"
+          }
+        }
+      ]
+    },
+
+    {
+      "path": "leave/requests/:id/approve",
+      "method": "POST",
+      "unit": "NPT-P08",
+      "folder": "Leave",
+      "name": "Approve request",
+      "summary": "Approve a subordinate's leave request. Caller must be the frozen approver on the request.",
+      "pathParams": [
+        { "name": "id", "description": "LEAVE_REQUEST_ID.", "example": "142" }
+      ],
+      "requestBody": {
+        "contentType": "application/json",
+        "example": { "approver_note": "Approved.", "object_version_number": 1 },
+        "_comment": "object_version_number carries optimistic concurrency (A13)."
+      },
+      "responses": [
+        { "status": 200, "description": "Approved.", "exampleSource": "hand-written", "example": { "leave_request_id": 142, "status": "APPROVED", "object_version_number": 2 } },
+        { "status": 403, "description": "Caller is not the approver on this request.", "problem": true, "exampleSource": "hand-written", "example": { "type": "about:blank", "title": "Not the approver", "status": 403 } },
+        { "status": 409, "description": "object_version_number did not match -- concurrent edit.", "problem": true, "exampleSource": "hand-written", "example": { "type": "about:blank", "title": "Concurrent modification", "status": 409 } }
+      ]
+    },
+
+    {
+      "path": "lookups",
+      "method": "GET",
+      "unit": "NPT-P02",
+      "folder": "Reference",
+      "name": "List lookups",
+      "summary": "All lookup values for the application, fetched once and cached client-side.",
+      "legacyEnvelope": true,
+      "smoke": true,
+      "queryParams": [
+        { "name": "p_lookup_type", "required": false, "type": "string", "description": "Single lookup type. Omit for the full cross-type cache.", "example": "XXNPT_LEAVE_STATUS" }
+      ],
+      "responses": [
+        {
+          "status": 200,
+          "description": "LEGACY ENVELOPE: HTTP is always 200. The real outcome is response_code.",
+          "exampleSource": "hand-written",
+          "example": {
+            "response_code": 200,
+            "response_message": "Success",
+            "data": [
+              { "lookup_type": "XXNPT_LEAVE_STATUS", "lookup_code": "PENDING", "meaning": "Pending", "lookup_tag": "20", "enable_flag": "Y" }
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "path": "assets/:id",
+      "method": "GET",
+      "unit": "NPT-P14",
+      "folder": "Assets",
+      "name": "Get asset",
+      "summary": "One asset record with its current assignment.",
+      "pathParams": [ { "name": "id", "description": "ASSET_ID.", "example": "8801" } ],
+      "responses": [
+        { "status": 404, "description": "No such asset, or the caller lacks the IT persona.", "problem": true, "exampleSource": "hand-written", "example": { "type": "about:blank", "title": "Not found", "status": 404 } }
+      ],
+      "_comment": "Deliberately has no 200 example: emit-collection.ps1 renders NO EXAMPLE CAPTURED for the success case rather than inventing a body (C3)."
+    }
+  ]
+}

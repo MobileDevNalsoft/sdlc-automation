@@ -1,7 +1,7 @@
 {
   "name": "sdlc-core",
-  "version": "2.0.0",
-  "description": "Agents and shared skills for human-triggered, agent-assisted delivery: plan -> implement -> gate -> review -> walkthrough. Includes world-class UI/UX design and audit skills for both web and mobile.",
+  "version": "2.1.0",
+  "description": "Agents and shared skills for human-triggered, agent-assisted delivery: plan -> implement -> gate -> review -> walkthrough. Includes world-class UI/UX design and audit skills for both web and mobile, and doc-coherence, which owns the traceability registry and propagation contract that keeps a PRD, a schema design, an API reference and a Postman collection from drifting apart.",
   "author": {
     "name": "madhankumar.ch"
   }

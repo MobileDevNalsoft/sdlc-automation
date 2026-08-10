@@ -1,7 +1,7 @@
 {
   "name": "docs-architect",
-  "version": "1.0.0",
-  "description": "Context, onboarding, reference, and guide skills for generating and maintaining documentation from a codebase. Splits by source-of-truth and refresh trigger rather than by stack, so a polyglot repo gets one cross-cutting trace instead of four drifting per-stack documents. Every claim is traceable to a file; a check that could not run reports NOT RUN rather than a silent pass.",
+  "version": "1.1.0",
+  "description": "PRD, context, onboarding, reference, and guide skills for documentation across a project's whole lifecycle. Split by source-of-truth and refresh trigger rather than by stack, so a polyglot repo gets one cross-cutting trace instead of four drifting per-stack documents -- and so specification-first documents (docs-prd, written before the code) and dictionary-derived documents (docs-reference, generated after deployment) are never mistaken for each other. Every claim is traceable to a file; a check that could not run reports NOT RUN rather than a silent pass.",
   "author": {
     "name": "madhankumar.ch"
   }
