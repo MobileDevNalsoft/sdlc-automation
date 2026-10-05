@@ -21,6 +21,12 @@ One real, runnable script: `scripts/audit-ords-drift.sql`. Two things it checks:
    inside a procedure/function) across the schema's packages, via PL/Scope
    (`USER_IDENTIFIERS`) if compiled with `PLSCOPE_SETTINGS='IDENTIFIERS:ALL'`,
    with a text-heuristic fallback (`USER_SOURCE` regex) if not.
+3. **Reserved parameter bind scan** — scans `USER_ORDS_HANDLERS.source` for
+   prohibited ORDS reserved or implicit parameters (`:q`, `:limit`, `:page`,
+   `:offset`, `:page_size`, `:page_offset`, `:fetch_offset`, `:fetch_size`,
+   `:row_offset`, `:row_count`). Flags collisions (e.g. `:q` breaking text
+   searches with 400 Bad Request) that must be rebound to `:search`, `:p_limit`,
+   or `:p_page`.
 
 Both are parameterized (`&MODULE_NAME`, `&MANIFEST_DIRECTORY`,
 `&MANIFEST_FILE`, `&PACKAGE_NAME_FILTER`) — this script does not hardcode a
@@ -73,9 +79,12 @@ treating it as such is a cross-user data leak vector, not a style nit.
    recompile with `PLSCOPE_SETTINGS='IDENTIFIERS:ALL'` first (the exact
    `ALTER PACKAGE`/`ALTER PACKAGE BODY` statements are in the script's
    comments) rather than trusting an empty result.
-5. Any finding here is evidence for a review pass or an `api-publish` gate —
-   cite the actual row (`uri_pattern`/`method`/`identifier_name`), don't
-   summarize it away.
+5. Run **Section 4** to check for any handlers binding ORDS reserved or implicit
+   parameters (`:q`, `:limit`, `:page`, `:offset`, etc.). Any row returned is an
+   active failure or collision risk that must be rebound before publishing.
+6. Any finding here is evidence for a review pass or an `api-publish` gate —
+   cite the actual row (`uri_template`/`method`/`matched_reserved`/`identifier_name`),
+   don't summarize it away.
 
 ## What this script does NOT do
 

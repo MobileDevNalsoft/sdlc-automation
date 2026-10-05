@@ -66,12 +66,22 @@ The four that bite hardest in a handler:
   for this.
 - **P12** — chunk internal fetches with `BULK COLLECT ... LIMIT`.
 
-Bind naming: the collection template deliberately avoids `:page_size` /
-`:page_offset`, which are **reserved ORDS implicit parameter names** — see
-A7's ORDS binding section before renaming any bind.
+Bind naming: custom handlers must NEVER bind ORDS reserved or implicit parameters
+(`:q`, `:limit`, `:page`, `:offset`, `:page_size`, `:page_offset`, `:fetch_offset`,
+`:fetch_size`, `:row_offset`, `:row_count`):
+- **Free-text search**: ALWAYS bind `:search` or `:p_search` (`?search=foo`). NEVER
+  bind `:q` or name the search parameter `q` — ORDS parses `q` as its JSON filter
+  object and aborts with `400 Bad Request` on plain-text input before the handler runs.
+- **Pagination**: ALWAYS bind `:p_page` and `:p_limit` (or `:p_offset`). NEVER bind
+  `:page`, `:limit`, or `:offset` directly, as ORDS intercepts them for its internal
+  engine.
+See `api-contract`'s A7 ORDS binding section before declaring any bind variable.
 
 ## Stop conditions
 
+- The proposed handler binds any ORDS reserved or implicit parameter (`:q`, `:limit`,
+  `:page`, `:offset`, `:page_size`, `:page_offset`, `:row_offset`, `:row_count`) —
+  stop and rename them to non-colliding names (`:search`, `:p_page`, `:p_limit`, `:p_offset`).
 - The task asks for a path shape not covered by A1–A3 (e.g. a nested
   sub-resource, a bulk/batch endpoint) — that's a `NEEDS-DECISION`, not a
   judgment call to improvise silently.

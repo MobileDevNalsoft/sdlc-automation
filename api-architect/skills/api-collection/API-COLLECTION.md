@@ -113,10 +113,16 @@ Every optional filter appears in `url.query` with `"disabled": true` and a
 description. A consumer discovers a filter by seeing it greyed out; they do not
 discover it by reading a paragraph.
 
-Pagination parameters follow A7 — for ORDS, `:fetch_offset` / `:fetch_size`.
-`:page_size` is deprecated **and reserved**, and a PL/SQL handler's ref cursor is
-**not** auto-paginated, so a manifest claiming pagination on such a handler is
-claiming behaviour that does not exist.
+Pagination parameters follow A7 — for ORDS, `:fetch_offset` / `:fetch_size`, or
+custom binds `:p_limit` / `:p_page`. Parameters `:page_size`, `:page_offset`,
+`:limit`, `:page`, and `:offset` are **reserved by ORDS** and must not be used as
+custom query parameters or binds.
+
+Free-text search parameters MUST be named `search`, NEVER `q`. ORDS reserves `q`
+for its JSON filter query object; any plain-text string passed as `?q=text`
+causes ORDS to abort with `400 Bad Request` before invoking the handler.
+A PL/SQL handler's ref cursor is **not** auto-paginated, so a manifest claiming
+pagination on such a handler is claiming behaviour that does not exist.
 
 ### C12 — `info._postman_id` is deterministic
 

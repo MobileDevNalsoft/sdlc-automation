@@ -29,7 +29,12 @@ return value instead of an ORDS `:status_code` bind).
   skill's templates already encode these rules, but the dispatching agent
   should still know which rule is which when it explains a deviation.
 - During any code-review pass over a handler/route diff — cite the violated
-  `A#` by number, don't restate the rule prose in the review comment.
+  `A#` by number, don't restate the rule prose in the review comment. In
+  particular, flag any handler or route binding ORDS reserved parameters
+  (`:q`, `:limit`, `:page`, `:offset`, `:page_size`, `:page_offset`) —
+  free-text search must use `search` / `:search` (`:q` triggers 400 Bad
+  Request from ORDS before the handler runs), and pagination must use
+  `p_page` / `p_limit`.
 - Whenever someone proposes a new convention (a new path shape, a new
   status-code strategy, a new auth header) — check whether it's already
   covered by A1–A22, or whether it's actually one of the **legacy patterns**

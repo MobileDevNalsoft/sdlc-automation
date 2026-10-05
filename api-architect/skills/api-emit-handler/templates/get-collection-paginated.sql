@@ -24,20 +24,24 @@ begin
      -- Bind-variable casing is an internal implementation detail (A6) — pick
      -- one casing and use it consistently for bind names; it does not have
      -- to match the wire-format field casing, which is a separate decision.
-     -- BIND NAMES ARE DELIBERATELY NOT :page_size / :page_offset (A7).
-     -- Those are ORDS IMPLICIT parameter names (the deprecated pair). In a
-     -- source_type_plsql handler ORDS binds any parameter matching an
-     -- implicit name with ITS OWN value — so a bind called :page_size does
-     -- not reliably carry the client's requested page size. The :p_ prefix
-     -- keeps every custom bind out of ORDS's reserved namespace.
-     -- Reserved, do not reuse: fetch_offset, fetch_size, page_offset,
-     -- page_size, row_offset, row_count, status_code, forward_location,
-     -- content_type.  (:status_code below IS intentionally the ORDS one.)
+     -- BIND NAMES MUST NEVER USE ORDS RESERVED / IMPLICIT PARAMETERS (A7).
+     -- In a source_type_plsql handler, ORDS binds any parameter matching an
+     -- implicit/reserved name with ITS OWN value or intercepts it at the gateway:
+     --   :q          -> LETHAL FOR SEARCH. ORDS treats 'q' as its JSON filter
+     --                  object. A plain-text '?q=text' query fails with 400 Bad
+     --                  Request before the handler runs! ALWAYS use :search / :p_search.
+     --   :limit, :page, :offset -> ORDS internal paging parameters. Overwritten/captured.
+     --                  ALWAYS use :p_limit, :p_page, :p_offset (or rows_per_page/page_number).
+     --   :page_size, :page_offset, :row_offset, :row_count -> Deprecated ORDS implicit binds.
+     --   :fetch_offset, :fetch_size -> ORDS 12c+ paging implicit binds.
+     --   :status_code, :body, :body_text, :forward_location, :content_type -> ORDS system binds.
+     --   (:status_code and :body_text below ARE intentionally the ORDS system out-binds.)
      p_source      => 'DECLARE l_tok VARCHAR2(2000); BEGIN '
                     || 'l_tok := {{APP_PKG}}.get_bearer_token; '  -- A8 — see auth helper note below
                     || '{{APP_PKG}}.{{GET_COLLECTION_PROC}}('
                     ||   'p_page_number => :p_page, '
                     ||   'p_page_size   => :p_limit, '       -- clamped to a max server-side (A23 step 2)
+                    ||   'p_search      => :search, '        -- text search: NEVER :q (A7)
                     ||   'p_cursor      => :p_cursor, '      -- optional, see cursor variant below (A7)
                     ||   'p_status      => :p_status, '      -- optional filter, drop if unused
                     ||   'p_token       => l_tok, '
@@ -109,8 +113,9 @@ end;
 -- total_count gets expensive at scale. Cursor pagination avoids both by
 -- keying off the last row's sort key instead of a row offset.
 --
--- Handler binds `:cursor` (opaque, client-supplied, echoed back from the
--- previous page's `next_cursor`) and `:limit` instead of `:page_number`.
+-- Handler binds `:p_cursor` (opaque, client-supplied, echoed back from the
+-- previous page's `next_cursor`) and `:p_limit` instead of `:p_page`.
+-- (NEVER bind reserved `:limit` directly!)
 --
 --   procedure {{GET_COLLECTION_PROC}}_cursor (
 --      p_cursor       in  varchar2 default null,  -- opaque, decodes to (created_at, id)

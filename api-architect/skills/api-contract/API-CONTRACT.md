@@ -251,13 +251,39 @@ whether a next page exists, and it is never returned to the client. Do not
 **2. Those names are RESERVED — do not reuse them as custom bind names.**
 
 In a `source_type_plsql` handler, ORDS binds any parameter whose name matches
-an implicit parameter with **its own** value. So a handler that declares
-`:page_size` intending "the client's requested page size" is naming a
-deprecated ORDS implicit parameter, and what arrives is whatever ORDS decides
-to supply — not necessarily the query parameter the client sent.
+an implicit or reserved parameter with **its own** internal value or intercepts
+the HTTP query parameter at the gateway layer.
 
-Name custom binds so they cannot collide: `:p_page`, `:p_limit`, `:p_cursor`.
-`api-emit-handler`'s collection template uses the non-colliding names for
+Two collisions cause severe production failures:
+
+- **`:q` is LETHAL for free-text search.** ORDS reserves `q` for its own JSON
+  filter query syntax (the Filter Object specification, e.g. `{"name":{"$like":"..."}}`).
+  When a handler binds `:q` and the client passes a plain-text search query like
+  `?q=smith`, ORDS tries to parse `smith` as a JSON object **before the handler
+  ever runs** and immediately aborts with `400 Bad Request` ("Malformed JSON").
+  Every text search endpoint in the application fails.
+  **Rule:** NEVER bind `:q` and never name a search query parameter `q`. Always
+  use `:search` / `:p_search` (HTTP query parameter: `?search=`).
+
+- **`:limit`, `:page`, and `:offset` are RESERVED for ORDS internal paging.**
+  In a PL/SQL handler, declaring `:limit`, `:page`, or `:offset` causes ORDS to
+  capture or overwrite the value with its internal paging mechanics rather than
+  passing the client's query string parameter cleanly.
+  **Rule:** NEVER bind `:limit`, `:page`, or `:offset`. Always use `:p_limit`,
+  `:p_page`, and `:p_offset` (or `p_page_number`, `p_rows_per_page`).
+
+| Forbidden / Colliding Bind | Why Forbidden in ORDS | Approved Alternative |
+|---|---|---|
+| `:q` | Reserved for ORDS JSON filter object. Plain-text `?q=...` throws `400 Bad Request` before handler runs. | `:search` / `:p_search` (`?search=foo`) |
+| `:limit` | Reserved for ORDS paging engine. Overwritten/captured by ORDS. | `:p_limit` or `:rows_per_page` |
+| `:page` | Reserved for ORDS paging engine. | `:p_page` or `:page_number` |
+| `:offset` | Reserved for ORDS paging engine. | `:p_offset` |
+| `:page_size`, `:page_offset` | Deprecated ORDS implicit parameters. | `:p_limit`, `:p_page` (or `:fetch_size`/`:fetch_offset` in SQL) |
+| `:row_count`, `:row_offset` | Legacy ORDS pagination parameters. | `:p_limit`, `:p_offset` |
+
+Name custom binds with the `:p_` prefix (or `:search` for search queries) so
+they cannot collide: `:search`, `:p_page`, `:p_limit`, `:p_cursor`.
+`api-emit-handler`'s collection template uses these non-colliding names for
 exactly this reason.
 
 **3. A PL/SQL handler returning a `SYS_REFCURSOR` gets NO automatic

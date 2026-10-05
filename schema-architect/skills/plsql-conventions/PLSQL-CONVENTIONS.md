@@ -72,6 +72,18 @@ tautologically true and returns every row, with no syntax error and no
 warning. `WHERE order_id = l_order_id` cannot do that. This is the single
 highest-value convention in this file.
 
+**ORDS parameter and bind naming (A7 cross-reference):** When a procedure is
+exposed through an ORDS REST handler:
+- **Search parameters**: Name formal parameter `p_search` (and bind `:search`).
+  NEVER name it `p_q` or bind `:q`. ORDS reserves `q` for its JSON Filter Object
+  query syntax; any plain text passed to `?q=search` is answered by ORDS with a
+  `400 Bad Request` before the handler or procedure ever runs.
+- **Paging parameters**: Name formal parameters `p_page` and `p_limit` (or
+  `p_page_number` and `p_rows_per_page`), binding `:p_page` and `:p_limit`.
+  NEVER bind `:limit`, `:page`, `:offset`, or deprecated `:page_size`, which
+  are reserved by ORDS internal paging machinery and will be captured or
+  overwritten.
+
 ## P3 — Anchor types to the schema with `%TYPE` and `%ROWTYPE`
 
 `l_customer_name app_customer_t.customer_name%type;` — not

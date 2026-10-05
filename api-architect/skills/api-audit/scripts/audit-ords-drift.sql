@@ -141,7 +141,7 @@ end;
 -- ============================================================================
 
 with live_endpoints as (
-   select t.uri_pattern,
+   select t.uri_template as uri_pattern,
           h.method
      from user_ords_modules   m
      join user_ords_templates t on t.module_id = m.id
@@ -286,3 +286,37 @@ select name as package_name, line, trim(text) as candidate_declaration
 -- variable, a package-level associative array keyed by session/token
 -- instead, or a table)? This script flags candidates; it does not and
 -- cannot automatically decide which category a given variable falls into.
+
+-- ============================================================================
+-- SECTION 4 — Handlers binding ORDS reserved or implicit parameter names
+--
+-- Why this matters:
+--   1. ':q' is reserved by ORDS for its JSON filter query object. If a handler
+--      binds ':q' and a client sends plain text '?q=text', ORDS returns
+--      400 Bad Request at the gateway before the handler ever executes.
+--      Free-text search MUST use ':search' / '?search='.
+--   2. ':limit', ':page', ':offset' are reserved by ORDS for internal paging.
+--      Handlers binding ':limit', ':page', or ':offset' will have those values
+--      captured or overwritten by ORDS internal paging calculations.
+--      Pagination MUST use ':p_limit', ':p_page', ':p_offset' (or rows_per_page).
+--   3. ':page_size', ':page_offset', ':row_offset', ':row_count' are deprecated
+--      implicit binds that ORDS populates with its own state.
+--
+-- Any row returned here is a violation that must be rebound.
+-- ============================================================================
+
+column matched_reserved format a20
+column uri_template     format a45
+
+select m.name                                              as module_name,
+       t.uri_template,
+       h.method,
+       h.source_type,
+       regexp_substr(h.source, ':(q|limit|offset|page|page_size|page_offset|fetch_offset|fetch_size|row_offset|row_count)([^[:alnum:]_]|$)', 1, 1, 'i') as matched_reserved
+  from user_ords_handlers  h
+  join user_ords_templates t on t.id = h.template_id
+  join user_ords_modules   m on m.id = t.module_id
+ where m.name like '&MODULE_NAME'
+   and regexp_like(h.source, ':(q|limit|offset|page|page_size|page_offset|fetch_offset|fetch_size|row_offset|row_count)([^[:alnum:]_]|$)', 'i')
+ order by m.name, t.uri_template, h.method;
+
