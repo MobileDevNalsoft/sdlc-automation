@@ -84,6 +84,15 @@ exposed through an ORDS REST handler:
   are reserved by ORDS internal paging machinery and will be captured or
   overwritten.
 
+- **Zero SQL reserved words in formal parameters or variables**:
+  Never declare parameters or variables that mirror SQL reserved keywords
+  (`p_comment`, `l_date`, `p_number`, `l_uid`, `p_user`, `l_type`, `p_order`,
+  `p_mode`, `p_size`, `p_default`, `l_status`). Even with a `p_` or `l_` prefix,
+  colliding with reserved concepts obscures SQL statement parsing when
+  interacting with native SQL functions. Use concrete domain nouns: `p_comments`
+  or `p_comment_text`, `l_target_date`, `p_item_number`, `p_user_id`,
+  `p_entity_type`, `p_sort_order`, `p_access_mode`, `p_status_code`.
+
 ## P3 — Anchor types to the schema with `%TYPE` and `%ROWTYPE`
 
 `l_customer_name app_customer_t.customer_name%type;` — not

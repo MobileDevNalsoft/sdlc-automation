@@ -1,6 +1,6 @@
 ---
 name: sdlc-plan
-description: Plans one human-selected task across React/Vite, Flutter/Dart, or PL-SQL/ORDS by loading the 3-tier context (code-review-graph, graphify, llmwiki) before reading source, naming every file it will touch, choosing an execution strategy, and writing the plan to a markdown file. Use PROACTIVELY when a task is selected and before any implementation code is written. Never implements feature code and never runs gates itself.
+description: Plans one human-selected task across React/Vite, Flutter/Dart, AI Agents (LangGraph/CrewAI), or PL-SQL/ORDS by loading the 3-tier context (code-review-graph, graphify, llmwiki) before reading source, naming every file it will touch, choosing an execution strategy, and writing the plan to a markdown file. Use PROACTIVELY when a task is selected and before any implementation code is written. Never implements feature code and never runs gates itself.
 tools: Read, Write, Edit, Grep, Glob, WebFetch
 model: inherit
 skills:

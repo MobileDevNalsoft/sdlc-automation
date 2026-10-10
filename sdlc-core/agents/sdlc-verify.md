@@ -32,6 +32,7 @@ You are the honest gate. A stack's gate commands are fixed by convention; your o
    **Tier 1 — always, every task:**
    - Web: `npx tsc --noEmit`, `npx eslint <diff paths>`
    - Flutter: `flutter analyze --fatal-infos`, `dart run tools/check_boundaries.dart`, `flutter test`
+   - AI Agent (Python): `ruff check .`, `mypy src`, `pytest tests/`
    - **All stacks: `secret-scan`** via its `scripts/scan-secrets.ps1`. Any one-line diff can paste a credential, a diff-scoped scan costs under a second, and the failure is irreversible — once pushed it is disclosed and rotation is the only remedy.
 
    **Tier 2 — conditional, only when the diff touches a trigger path:**

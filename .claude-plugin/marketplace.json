@@ -33,6 +33,11 @@
       "name": "docs-architect",
       "source": "./docs-architect",
       "description": "PRD, context, onboarding, reference, and guide skills spanning a project's whole documentation lifecycle. Writes the MD.050 page-level design a business reviewer signs before any code exists, maintains the 3-tier agent context (code-review-graph, graphify, llmwiki), writes a cross-stack onboarding trace instead of four drifting per-stack docs, derives API and schema reference from the live dictionary, and produces user guides with a regenerable screenshot manifest."
+    },
+    {
+      "name": "agent-sdlc",
+      "source": "./agent-sdlc",
+      "description": "Scaffold, vertical-slice, gate, and release skills for AI Agents (LangGraph, CrewAI, StateGraph). Strongly-typed State, deterministic tool schemas, SQLite/PostgreSQL checkpointing persistence, human-in-the-loop review interrupts, and context-firewalled subagents."
     }
   ]
 }

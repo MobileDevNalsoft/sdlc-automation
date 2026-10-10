@@ -72,19 +72,20 @@ Practical consequence: a component should not invent its own error copy.
 answers whether offering "Try again" is honest — a retry button on a 403 is a
 lie.
 
-## Render all FOUR states. An empty list is not an error.
+## Render all FIVE states. An empty list is not an error. Every write affordance goes through PermissionGate.
 
 ```
-loading | error | EMPTY | populated
+loading (Skeleton) | empty (EmptyState) | error (ErrorState) | gated (PermissionGate) | loaded
 ```
 
-The most common defect in this layer is collapsing empty into one of the other
-three. Rendering "failed to load" for a successful response containing zero
-rows teaches users to distrust the app and hides the real call to action ("Add
-your first tag"); rendering nothing at all looks like a broken page.
-`ProductTagsPanel.tsx` branches on all four explicitly.
+The most common defect in this layer is collapsing empty into error or skipping the gated state:
+1. **Loading**: Skeleton placeholder reserving exact geometry.
+2. **Empty**: `EmptyState` component explaining absence and offering the resolution action.
+3. **Error**: `ErrorState` component with honest Retry affordance (never retry on 403).
+4. **Gated**: `PermissionGate` component — Group absent renders nothing; `ACCESS_TYPE='V'` renders child disabled with the reason visible.
+5. **Loaded**: Normal responsive data view.
 
-Two details worth copying from that template: use `isPending`, not
+Two details worth copying from `ProductTagsPanel.tsx`: use `isPending`, not
 `isLoading`, for "there is no data yet" (v5 semantics), and give **mutation**
 errors their own surface — the query-level error branch has already returned by
 the time a mutation fails, so an unrendered `mutation.error` is silent.
@@ -92,17 +93,15 @@ the time a mutation fails, so an unrendered `mutation.error` is silent.
 ## Presentation layer: this skill wires data and states, not visual design
 
 `ProductTagsPanel.tsx` uses the shared primitives `react-bootstrap` ships
-(`Button`, `ErrorView`, `EmptyState`, `LoadingState`) rather than raw
-`<button>`/`<div>`, the same way flutter-sdlc requires `AppButton` over
-`FilledButton`. That is an **architecture** decision — states, semantics,
-focus handling and tap-target sizing get decided once — not a visual one.
+(`Button`, `ErrorState`, `EmptyState`, `Skeleton`, `PermissionGate`) rather than raw
+`<button>`/`<div>`. Every write affordance (Create, Update, Delete) must be wrapped
+in `<PermissionGate>`. That is an **architecture** decision — states, semantics,
+focus handling and RBAC access enforcement get decided once — not a visual one.
 
 Visual design (typography, color, spacing, layout) remains owned by
 `sdlc-core:ui-ux-web`, reviewed by `sdlc-core:ui-ux-review`. react-slice's job
-ends at "the wiring is correct and all four states render"; hand the visual
-treatment to those skills rather than inventing styling conventions here, and
-prefer your own feature's existing component conventions over this template's
-markup.
+ends at "the wiring is correct, all five states render, and write affordances are gated";
+hand the visual treatment to those skills rather than inventing styling conventions here.
 
 ## What this skill does NOT do
 

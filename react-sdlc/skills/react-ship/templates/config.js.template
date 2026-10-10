@@ -1,0 +1,13 @@
+// -----------------------------------------------------------------------------
+// Runtime browser configuration.
+// Injected by entrypoint.sh at container start.
+// NEVER put secrets, private keys, or backend credentials in this file.
+// -----------------------------------------------------------------------------
+window.__APP_CONFIG__ = Object.freeze({
+  API_BASE_URL: '${API_BASE_URL}',
+  ENVIRONMENT: '${ENVIRONMENT}',
+  APP_VERSION: '${APP_VERSION}',
+  REQUEST_TIMEOUT_MS: Number('${REQUEST_TIMEOUT_MS}') || 30000,
+  FEATURE_FLAGS: ${FEATURE_FLAGS_JSON},
+  MOCK_DOMAINS: '${MOCK_DOMAINS}'
+});

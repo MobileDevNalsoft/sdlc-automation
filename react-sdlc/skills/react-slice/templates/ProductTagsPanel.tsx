@@ -1,27 +1,24 @@
 // ProductTagsPanel.tsx — react-slice worked example: "Product Tags"
 //
 // Terminal component of the slice: consumes the hooks, and never touches
-// ProductTagDTO or a wire-format field. It renders all FOUR states, because
+// ProductTagDTO or a wire-format field. It renders all FIVE states, because
 // skipping one is the most common defect in this layer:
 //
-//   loading | error | EMPTY | populated
+//   loading (Skeleton) | empty (EmptyState) | error (ErrorState) | gated (PermissionGate) | loaded
 //
 // AN EMPTY LIST IS NOT AN ERROR. Rendering "failed to load" for a successful
 // response with zero rows teaches users to distrust the app and hides the
 // actual call to action. They are separate branches on purpose.
 //
-// It uses the shared primitives (Button, ErrorView, EmptyState, LoadingState)
-// that react-bootstrap ships, rather than raw <button>/<div> — the same rule
-// flutter-sdlc enforces when it requires AppButton over FilledButton. That is
-// an ARCHITECTURE choice (states and semantics are decided once), not a visual
-// one: spacing, color, typography and layout remain owned by
-// sdlc-core:ui-ux-web and reviewed by sdlc-core:ui-ux-review, not by this
-// skill. Copy your own feature's existing component conventions over this
-// file's markup.
+// EVERY WRITE AFFORDANCE GOES THROUGH PermissionGate:
+//   * Group absent    -> render nothing
+//   * ACCESS_TYPE='V' -> render child disabled with reason visible
 import { useState } from 'react';
 import { Button } from '@/shared/ui/Button';
-import { EmptyState, ErrorView } from '@/shared/ui/ErrorView';
-import { LoadingState } from '@/shared/ui/Spinner';
+import { EmptyState } from '@/shared/ui/EmptyState';
+import { ErrorState } from '@/shared/ui/ErrorState';
+import { Skeleton } from '@/shared/ui/Skeleton';
+import { PermissionGate } from '@/shared/ui/PermissionGate';
 import { useAddProductTag, useProductTags, useRemoveProductTag } from '../api/product-tags.queries';
 
 interface ProductTagsPanelProps {
@@ -30,18 +27,25 @@ interface ProductTagsPanelProps {
 
 export function ProductTagsPanel({ productId }: ProductTagsPanelProps): React.ReactElement {
   const [newTagCode, setNewTagCode] = useState('');
-  // `isPending` (not `isLoading`) is the v5 flag for "there is no data yet".
   const { data: tags, isPending, error, refetch } = useProductTags(productId);
   const addTag = useAddProductTag(productId);
   const removeTag = useRemoveProductTag(productId);
 
-  if (isPending) return <LoadingState label="Loading tags" />;
+  // State 1: Loading — reserved geometry via Skeleton
+  if (isPending) {
+    return (
+      <div className="space-y-3 p-4">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
 
-  // `error` is an ApiError, already mapped by BaseApiService — ErrorView reads
-  // its `.detail` to decide whether offering "Try again" is even honest.
+  // State 2: Error — actionable failure with Retry
   if (error) {
     return (
-      <ErrorView
+      <ErrorState
         error={error}
         title="Could not load tags"
         onRetry={() => {
@@ -51,66 +55,77 @@ export function ProductTagsPanel({ productId }: ProductTagsPanelProps): React.Re
     );
   }
 
+  // State 3 & 5: Empty vs Loaded
   return (
-    <section>
+    <section className="space-y-4 p-4 rounded-card bg-surface border border-border">
       {tags.length === 0 ? (
-        <EmptyState title="No tags yet" description="Tags you add will appear here." />
+        <EmptyState
+          title="No tags assigned"
+          description="Tags help organize and filter products across the catalog."
+        />
       ) : (
-        <ul>
+        <ul className="divide-y divide-border">
           {tags.map((tag) => (
-            <li key={tag.id}>
-              {tag.tagLabel}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  removeTag.mutate({ tagId: tag.tagId });
-                }}
-                // Disabling only the row being removed, rather than every row,
-                // keeps the rest of the list usable during the request.
-                isLoading={removeTag.isPending && removeTag.variables?.tagId === tag.tagId}
-              >
-                Remove
-              </Button>
+            <li key={tag.id} className="flex items-center justify-between py-2">
+              <span className="text-sm font-medium text-fg">{tag.tagLabel}</span>
+              <PermissionGate permission="PRODUCT_TAGS_WRITE" mode="write">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    removeTag.mutate({ tagId: tag.tagId });
+                  }}
+                  isLoading={removeTag.isPending && removeTag.variables?.tagId === tag.tagId}
+                >
+                  Remove
+                </Button>
+              </PermissionGate>
             </li>
           ))}
         </ul>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const code = newTagCode.trim();
-          if (code === '') return;
-          addTag.mutate(
-            { tagCode: code },
-            {
-              onSuccess: () => {
-                setNewTagCode('');
-              },
-            }
-          );
-        }}
-      >
-        <input
-          value={newTagCode}
-          onChange={(e) => {
-            setNewTagCode(e.target.value);
+      {/* Write Affordance: Add Tag Form */}
+      <PermissionGate permission="PRODUCT_TAGS_WRITE" mode="write">
+        <form
+          className="flex items-center gap-2 pt-2 border-t border-border"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const code = newTagCode.trim();
+            if (code === '') return;
+            addTag.mutate(
+              { tagCode: code },
+              {
+                onSuccess: () => {
+                  setNewTagCode('');
+                },
+              }
+            );
           }}
-          placeholder="Tag code"
-          aria-label="New tag code"
-        />
-        {/* type="submit" is explicit: Button defaults to type="button" so that
-            an icon button elsewhere cannot accidentally submit its form. */}
-        <Button type="submit" isLoading={addTag.isPending}>
-          Add tag
-        </Button>
-      </form>
+        >
+          <input
+            className="flex-1 px-3 py-1.5 text-sm rounded-control bg-bg border border-border text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+            value={newTagCode}
+            onChange={(e) => {
+              setNewTagCode(e.target.value);
+            }}
+            placeholder="Tag code"
+            aria-label="New tag code"
+          />
+          <Button type="submit" isLoading={addTag.isPending}>
+            Add tag
+          </Button>
+        </form>
+      </PermissionGate>
 
-      {/* Mutation failures need their own surface — the query-level ErrorView
-          above has already returned by this point, so a failed add would
-          otherwise be completely silent. */}
-      {addTag.error && <ErrorView error={addTag.error} title="Could not add tag" />}
+      {/* Mutation error alert */}
+      {addTag.error && (
+        <ErrorState
+          error={addTag.error}
+          title="Could not add tag"
+          className="p-4"
+        />
+      )}
     </section>
   );
 }

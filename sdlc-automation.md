@@ -1,7 +1,7 @@
 # AI-First SDLC Automation — React, Flutter, Oracle/ORDS
 
 > **Version:** 4.0.0 · **Date:** 2026-07-29 · **Status:** Design. No plugin files created yet.
-> **Scope:** All projects under `D:\Madhan_Projects`
+> **Scope:** All projects across React, Flutter, AI Agents, and Oracle/ORDS
 > **Evidence base:** 10 researched dimensions, 6 adversarial audits, 2,088,393 subagent tokens. Every version here was read off a registry page; every repo claim was checked against the file on disk.
 
 ---
@@ -73,7 +73,7 @@ Anything with a correct, versioned, community-tested implementation is invoked, 
 | D3 | Generate all three IDE surfaces — `.agent/`, `.claude/`, `.codex/`. | You use Antigravity and Claude Code actively. Drift handled by generation (§8). |
 | D4 | Per-agent skill rosters in `skills:` frontmatter. | It preloads skill *content* into subagent context — the mechanism that keeps bodies under 4 KB while five plugins share one convention source. |
 | D5 | No mutating git operations by any agent. | Your decision. Consequence: strictly serial execution (§7.5). |
-| D6 | Canonical doc: `D:\Madhan_Utils\docs\sdlc-automation.md`. | Governs all projects; belongs in no single product repo. |
+| D6 | Canonical doc: `D:\madhan-utils\toolkit\ai-plugins\sdlc-automation\sdlc-automation.md`. | Governs all projects; belongs in no single product repo. |
 | D7 | Curate and vendor; no live upstream dependency. | Full control, no upstream breakage. Cost: no upstream fixes — mitigated by recorded SHAs (§9.1). |
 | D8 | Deterministic substrate for scaffolding. | Proven beats generated. |
 | D9 | **4 agents total**, all with explicit `tools`. | §2.1. |
@@ -141,16 +141,18 @@ Gates run in parallel against the same diff. Chaining them means a security find
 
 ---
 
-## 5. The five plugins
+## 5. The seven plugins
 
 ```
-D:\Madhan_Utils\sdlc-plugins\        ← canonical source, local marketplace
+D:\madhan-utils\toolkit\ai-plugins\sdlc-automation\   ← canonical source, local marketplace
 ├── .claude-plugin/marketplace.json
-├── sdlc-core/        agents ×4 · skills ×5 · walkthrough · madvibe-task-sync
+├── sdlc-core/        agents ×4 · skills ×11 · walkthrough · /sdlc-task
 ├── react-sdlc/       scaffold · slice · gate · release
 ├── flutter-sdlc/     scaffold · slice · gate · release
+├── agent-sdlc/       scaffold · slice · gate · release (LangGraph / CrewAI)
 ├── schema-architect/ model · emit-ddl · audit · promote
-└── api-architect/    contract · emit-handler · audit · publish
+├── api-architect/    contract · emit-handler · audit · publish
+└── docs-architect/   scaffold · context · prd · onboarding · reference · guide
 ```
 
 Install per project via `/plugin marketplace add`, then generate the three IDE surfaces (§8). One copy maintained.

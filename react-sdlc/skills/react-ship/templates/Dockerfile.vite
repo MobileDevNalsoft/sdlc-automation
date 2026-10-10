@@ -1,13 +1,18 @@
 # syntax=docker/dockerfile:1.7
 #
 # Production Multi-Stage Dockerfile for React 19 + Vite SPAs.
-# Runner executes as unprivileged user 'nginx' on port 8080.
-# Zero build credentials or development tools are retained in the final image.
+# The final runner container runs as unprivileged user 'nginx' on port 8080.
+# Zero build secrets or node_modules are included in the runtime image.
+# Backend gateway credentials and runtime configuration are injected at container boot.
 
+# -----------------------------------------------------------------------------
+# Stage 1: Builder
+# -----------------------------------------------------------------------------
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Vite base path parameter (e.g. '/' or '/my-app/')
 ARG APP_BASE_PATH=/
 ENV APP_BASE_PATH=${APP_BASE_PATH}
 
@@ -17,10 +22,16 @@ RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
 COPY . .
 RUN npm run build
 
+# -----------------------------------------------------------------------------
+# Stage 2: Verifier (Linux-native test validation)
+# -----------------------------------------------------------------------------
 FROM builder AS verifier
 ARG TEST_MAX_WORKERS=2
 RUN npm run test -- --maxWorkers="${TEST_MAX_WORKERS}"
 
+# -----------------------------------------------------------------------------
+# Stage 3: Runner (Unprivileged Nginx)
+# -----------------------------------------------------------------------------
 FROM nginxinc/nginx-unprivileged:alpine3.22 AS runner
 
 ARG APP_BASE_PATH=/
@@ -34,6 +45,7 @@ LABEL org.opencontainers.image.title="Web Application" \
 
 USER root
 
+# Install gettext (envsubst), jq (json validator), and curl (healthcheck)
 RUN apk add --no-cache ca-certificates curl gettext jq \
     && mkdir -p /etc/app /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp \
     && chown -R nginx:nginx /etc/app /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp

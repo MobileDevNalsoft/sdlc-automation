@@ -1,0 +1,16 @@
+{
+  "name": "agent-sdlc",
+  "version": "1.0.0",
+  "description": "Multi-agent systems automation suite (LangGraph, CrewAI, StateGraphs, Tool Schemas, Human-in-the-Loop, Verification)",
+  "author": {
+    "name": "Madhan"
+  },
+  "keywords": [
+    "langgraph",
+    "crewai",
+    "multi-agent",
+    "ai-agents",
+    "stategraph",
+    "tool-schemas"
+  ]
+}

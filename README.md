@@ -1,393 +1,132 @@
 # sdlc-automation
 
-A local Claude Code plugin marketplace: **6 plugins · 4 agents · 35 skills**.
+A full-stack, enterprise-grade SDLC automation suite: **7 plugins · 4 agents · 40 skills**.
 
-Human-triggered, agent-assisted delivery across React/web, Flutter/mobile, Oracle schema, and REST APIs. You tag work with a task; the pipeline plans it, implements one vertical slice, gates itself on build quality and security, and hands back a written walkthrough plus an uncommitted diff.
+Human-triggered, agent-assisted delivery across **React 19 + Vite 8**, **Flutter + BLoC**, **AI Agents (LangGraph/CrewAI)**, **Oracle DB Schemas**, and **REST/ORDS APIs**. 
 
-Two things it will never do: proceed past a decision that's yours to make, and mutate git state.
+Two foundational invariants: **never proceed past an unverified decision**, and **never mutate git state** (commits and pushes remain 100% human-controlled).
 
 ---
 
-## Install
+## 1. Quick Start & Execution
 
+### Global Setup in Antigravity / Claude Code
+The plugin is linked into your global configuration at `~/.gemini/config/plugins/sdlc-automation/` with its source repository at `D:\madhan-utils\toolkit\ai-plugins\sdlc-automation`.
+
+### Running a Complete Task
+To run an end-to-end task (plan → human approval → implement → verify in parallel → walkthrough):
 ```bash
-/plugin marketplace add MobileDevNalsoft/sdlc-automation
-/plugin install sdlc-core@sdlc-automation
-/plugin install react-sdlc@sdlc-automation        # or flutter-sdlc, schema-architect, api-architect, docs-architect
-/reload-plugins
+/sdlc-core:sdlc-task <task-id or task description>
 ```
 
-`sdlc-core` is required — it owns the agents and the shared process skills every stack plugin builds on. Install whichever stack plugins match what you work on.
+### Scaffolding New Projects (Day 0)
+1. **Emit Context & Documentation Suite (All Stacks)**:
+   Invoke `docs-architect:docs-scaffold` to generate the 10-document contract in `docs/` (`PRD.md`, `UX_FLOWS.md`, `DESIGN_SYSTEM.md`, `ARCHITECTURE.md`, `DATABASE.md`, `API.md`, `SECURITY.md`, `CODE_STYLE.md`, `TESTING.md`, `AGENTS.md`).
+2. **Scaffold React Greenfield App**:
+   Invoke `react-sdlc:react-bootstrap` (emits React 19, Vite 8, Tailwind v4 `@theme`, 5-state UI primitives, Axios client with RFC 9457 error handling).
+3. **Scaffold Flutter Mobile App**:
+   Invoke `flutter-sdlc:flutter-bootstrap` (emits Flutter 3, BLoC/Cubit, GoRouter, Freezed, check_boundaries.dart, 5-state widgets).
+4. **Scaffold AI Agent System**:
+   Invoke `agent-sdlc:agent-bootstrap` (emits LangGraph StateGraph, typed Pydantic state, SQLite/PG checkpointer, human-in-the-loop review nodes).
 
-Then run:
+---
 
+## 2. The Four Autonomous Agents
+
+Each agent has an explicit `tools` allowlist (never `*`), strict <4 KB context limits, and finishes on a single terminal routing token.
+
+| Agent | Scoped Tools | Terminal Token | Responsibility & When to Use |
+|---|---|---|---|
+| **@sdlc-plan** | `Read, Write, Edit, Grep, Glob, WebFetch` | `PLAN-READY` / `NEEDS-DECISION` | **Planning Phase**: Loads 3-tier context (AST → Graph → Wiki) *before* reading source. Produces Skill Decision Record, names every affected file, chooses execution strategy, and authors `docs/plans/<task-id>.md`. Never writes code. |
+| **@sdlc-developer** | `Read, Write, Edit, Grep, Glob, Bash` | `IMPLEMENTED` / `BLOCKED` | **Implementation Phase**: Dispatched only after plan approval. Implements one vertical slice in dependency order. Raises `SCOPE-REQUEST` before editing any unlisted file. Never mutates git. |
+| **@sdlc-verify** | `Read, Grep, Glob, Bash` | `GATE-PASS` / `GATE-FAIL` | **Build & Quality Gate**: Runs compiler, boundary linter, and unit tests. Capped at 2 auto-fix cycles. Quotes verbatim non-zero exit codes. Never summarizes output without proof. |
+| **@sdlc-review** | `Read, Grep, Glob, ReportFindings` | `SHIP` / `DO-NOT-SHIP` | **Read-Only Code Review**: Reviews diffs for security vulnerabilities, RFC 9457 compliance, secret leaks, and architectural drift. Has no shell access by design. |
+
+---
+
+## 3. The Seven Modular Plugins (40 Skills)
+
+### 3.1 `docs-architect` — Documentation Lifecycle (6 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `docs-scaffold` | scaffold-docs | **Day 0 of any project**: Emits the 10-document context suite into `docs/` and root `AGENTS.md`. Establishes context before code. |
+| `docs-context` | index | **Start of task & after structural changes**: Establishes or refreshes 3-tier memory (`.code-review-graph/`, `graphify-out/`, `llmwiki/`). |
+| `docs-prd` | specify | **Before code**: Writes business-signed MD.050 / PRD with wireframes, validations, and the 10-column Field Properties contract. |
+| `docs-onboarding` | onboard | **After greenfield build**: Generates cross-stack architecture trace (`CODEBASE_ONBOARDING.md`) with Mermaid diagrams and Flaws & Risks audit. |
+| `docs-reference` | reference | **Post-deployment**: Generates exhaustive schema and REST API reference from the live data dictionary. |
+| `docs-guide` | guide | **End-user delivery**: Generates task-oriented user guides with screenshot manifests. |
+
+### 3.2 `react-sdlc` — React 19 + Vite 8 + Tailwind v4 (4 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `react-bootstrap` | scaffold | Scaffolds React 19 + Vite 8 + Tailwind v4 `@theme`. Emits 5-State UI primitives (`LoadingState`, `EmptyState`, `ErrorState`, `PermissionGate`), RFC 9457 Axios client, Zustand stores, and ESLint boundary config. |
+| `react-slice` | slice | Implements one vertical slice: DTO → Transformer → API Client → Query/Mutation Hook → Component with all 5 UI states. |
+| `react-verify` | gate | Executes `tsc --noEmit` and `eslint <diff>` with strict boundary enforcement. |
+| `react-ship` | release | Generates production Dockerfile with unprivileged runtime and reverse-proxy credential isolation. |
+
+### 3.3 `flutter-sdlc` — Flutter + BLoC + Freezed (4 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `flutter-bootstrap` | scaffold | Scaffolds Flutter app with `flutter_bloc`, GoRouter, Freezed, `AppTheme` tokens, 5-state widgets, and `tools/check_boundaries.dart`. |
+| `flutter-slice` | slice | Implements one mobile vertical slice: Service → Repository returning `Result<T>` → Cubit → Screen with exhaustive state switch. |
+| `flutter-verify` | gate | Executes `flutter analyze --fatal-infos`, `check_boundaries.dart`, and `flutter test`. |
+| `flutter-ship` | release | Generates Android flavor builds, signing, obfuscation, and symbol mapping. |
+
+### 3.4 `agent-sdlc` — AI Agents (LangGraph / CrewAI) (4 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `agent-bootstrap` | scaffold-agent | Scaffolds LangGraph StateGraph applications: Pydantic v2 state schemas, SQLite/PostgreSQL checkpointing persistence, human-in-the-loop review nodes, and context firewalls. |
+| `agent-slice` | slice-agent | Adds a new specialized agent node, a tool with strict Pydantic parameter schemas, or an edge routing branch to an existing StateGraph. |
+| `agent-verify` | verify-agent | Executes `ruff check .`, `mypy src`, and `pytest` state transition tests. |
+| `agent-ship` | ship-agent | Builds unprivileged Python Docker container with externalized environment secrets and `/healthz` checkpointer health probes. |
+
+### 3.5 `schema-architect` — Database & Schemas (6 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `schema-model` | model | Models tables, constraints, foreign keys with explicit `ON DELETE` rules, and indexes. |
+| `schema-emit` | emit-ddl | Emits DDL adhering to the 6 invariant columns: `object_version_number`, `active_flag`, `created_by`, `creation_date`, `last_updated_by`, `last_update_date`. |
+| `schema-document` | document | Generates the 12-section database design document (MD.070) with ER diagrams and data dictionary. |
+| `schema-audit` | audit | Runs SQL audit checks against database dictionaries for convention drift, invalid objects, and sequence gaps. |
+| `schema-promote` | promote | Generates forward promotion scripts and versioned rollbacks. |
+| `plsql-conventions` | conform | Enforces PL/SQL rules: scope prefixes (`l_`, `p_`, `g_`), bulk fetching, CLOB handling, and package state isolation. |
+
+### 3.6 `api-architect` — REST & ORDS APIs (5 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `api-contract` | contract | Enforces REST conventions: RFC 9457 error payloads, safe SQL parameter binds (no reserved `:q` or `:limit`), idempotency, and pagination. |
+| `api-emit-handler` | emit-handler | Emits ORDS / REST API handlers with input validation, optimistic locking checks, and audit logging. |
+| `api-collection` | collect | Emits synchronized Postman v2.1 collection and `api.md` contract from a single manifest. |
+| `api-audit` | audit | Audits deployed API endpoints against declared contracts and detects state leakage in connection pools. |
+| `api-publish` | publish | Deploys modules to ORDS with automated teardown, definition, schema enabling, and smoke testing. |
+
+### 3.7 `sdlc-core` — Shared Process & Quality (11 Skills)
+| Skill | Verb | When to Use & Responsibility |
+|---|---|---|
+| `evidence-contract` | attest | Enforces factual assertions: requires exit codes, verbatim output, or `file:line` citations. |
+| `output-contracts` | emit | Standardizes agent output templates and routing tokens across all tools. |
+| `secret-scan` | scan | **Blocking on every task**: Scans diffs for API keys, hardcoded passwords, and Vite client secret inlining. |
+| `dependency-audit` | audit | Audits package manifests and lockfiles for known CVEs. |
+| `ui-ux-web` | design (web) | Governs web visual design, typography, spacing, and micro-interactions. |
+| `ui-ux-mobile` | design (mobile) | Governs mobile UX, thumb reach zones, safe areas, and platform gestures. |
+| `ui-ux-review` | review (UI) | Audits UI diffs against Dieter Rams principles and accessibility standards. |
+| `arbitration` | arbitrate | Resolves conflicting requirements by writing an ADR in `docs/decisions/` and requesting human sign-off. |
+| `vendoring-freshness`| refresh | Enforces attribution headers and freshness dates on all vendored templates and libraries. |
+| `walkthrough` | document | Generates `docs/walkthroughs/<task-id>.md` with mandatory manual verification proof. |
+| `doc-coherence` | reconcile | Audits cross-document synchronization between PRD, Schema DDL, and API collections. |
+
+---
+
+## 4. Verification & Testing
+
+Every task executed through this suite gates on deterministic tool exits:
+```bash
+# Web Gate
+npm run typecheck && npm run lint && npm run test
+
+# Flutter Gate
+flutter analyze --fatal-infos && dart run tools/check_boundaries.dart && flutter test
+
+# AI Agent Gate
+ruff check . && mypy src && pytest tests/
 ```
-/sdlc-core:sdlc-task <task-id or description>
-```
-
-> Plugin skills and commands are namespaced. It's `/sdlc-core:sdlc-task`, not `/sdlc-task`.
-
----
-
-## What happens when you run it
-
-Ten steps, two human checkpoints, no agent-initiated git writes.
-
-```mermaid
-flowchart TD
-    START(["/sdlc-task [task-id]"]) --> LOCK
-
-    subgraph GATE0 ["Step 1-2 · Admission"]
-        LOCK{"Serial-execution lock<br/>walkthrough non-terminal?<br/>plan awaiting approval?"}
-    end
-
-    LOCK -->|"either exists"| REFUSE["REFUSE<br/>name the blocking task, stop"]
-    LOCK -->|"clear"| PLAN
-
-    subgraph S3 ["Step 3 · Plan"]
-        PLAN["@sdlc-plan<br/>Read Write Edit Grep Glob WebFetch"]
-        PLAN --> T3T["3-tier context load<br/>code-review-graph → graphify → llmwiki"]
-        T3T --> SDR["Skill Decision Record<br/>+ rejected candidates"]
-        SDR --> STRAT{"Execution strategy"}
-        STRAT --> PFILE["writes docs/plans/&lt;task-id&gt;.md"]
-    end
-
-    PFILE --> TOK1{"PLAN-READY<br/>or NEEDS-DECISION"}
-    TOK1 --> HUMAN1
-
-    HUMAN1{{"HUMAN CHECKPOINT 1<br/>approve the plan"}}
-    HUMAN1 -->|"decision needed"| PLAN
-    HUMAN1 -->|"approved"| DEV
-
-    subgraph S5 ["Step 5 · Implement"]
-        DEV["@sdlc-developer<br/>Read Write Edit Grep Glob Bash"]
-        DEV --> MODE{"honors plan's strategy"}
-        MODE -->|"INLINE"| SLICE["dispatch stack slice skill"]
-        MODE -->|"SUBAGENT-DRIVEN"| UNITS["one subagent per unit<br/>exclusive file ownership"]
-        UNITS --> INTEG["integration step"]
-        SLICE --> UIUX["UI touched?<br/>→ ui-ux-web / ui-ux-mobile"]
-        INTEG --> UIUX
-    end
-
-    DEV -.->|"needs unlisted file"| SCOPE["SCOPE-REQUEST<br/>no terminal token"]
-    SCOPE --> HUMANX{{"HUMAN<br/>approve this file, this edit"}}
-    HUMANX --> DEV
-
-    UIUX --> TOK2{"IMPLEMENTED<br/>or BLOCKED"}
-    TOK2 --> PAR
-
-    PAR["dispatch both gates on the same diff"]
-    PAR --> VER
-    PAR --> REV
-
-    subgraph S6 ["Step 6 · Gates run in parallel"]
-        VER["@sdlc-verify<br/>Read Grep Glob Bash"]
-        REV["@sdlc-review<br/>Read Grep Glob ReportFindings<br/>git diff/status/log/show only"]
-    end
-
-    VER --> VTOK{"GATE-PASS<br/>or GATE-FAIL"}
-    REV --> RTOK{"SHIP<br/>or DO-NOT-SHIP"}
-
-    VTOK -->|"GATE-FAIL after 2 cycles"| ROUTE
-    RTOK -->|"DO-NOT-SHIP"| ROUTE
-    ROUTE["ROUTE-TO-DEVELOPER<br/>verbatim failure + file:line"] --> DEV2["@sdlc-developer<br/>fix only what was named"]
-    DEV2 --> RERUN["re-run both gates ONCE<br/>free of the 2-cycle budget"]
-    RERUN --> WT
-
-    VTOK -->|"GATE-PASS"| WT
-    RTOK -->|"SHIP"| WT
-
-    WT["Step 8 · walkthrough skill<br/>docs/walkthroughs/&lt;task-id&gt;.md"]
-    WT --> STATUS["Step 9 · tracker status<br/>or say plainly there is none"]
-    STATUS --> HUMAN2{{"HUMAN CHECKPOINT 2<br/>walkthrough + uncommitted diff"}}
-    HUMAN2 --> STOP(["STOP — no commit, no push<br/>git writes are always human"])
-```
-
-Dotted is the scope-expansion escape hatch. It produces **no terminal token** because the agent is waiting for an answer, not finished.
-
----
-
-## The four agents
-
-Each declares an explicit tool allowlist — never `*` — and ends on one uppercase token so a dispatcher can route on the final line.
-
-| Agent | Tools | Ends on |
-|---|---|---|
-| **@sdlc-plan** | `Read, Write, Edit, Grep, Glob, WebFetch` | `PLAN-READY` / `NEEDS-DECISION` |
-| **@sdlc-developer** | `Read, Write, Edit, Grep, Glob, Bash` | `IMPLEMENTED` / `BLOCKED` |
-| **@sdlc-verify** | `Read, Grep, Glob, Bash` | `GATE-PASS` / `GATE-FAIL` |
-| **@sdlc-review** | `Read, Grep, Glob, ReportFindings, Bash(git diff/status/log/show)` | `SHIP` / `DO-NOT-SHIP` |
-
-**@sdlc-plan** loads context before reading source, names every file it will touch, records rejected skill candidates with reasons, and chooses whether execution should be inline or split across subagents. Its `Write`/`Edit` exist to author `docs/plans/<task-id>.md` and nothing else.
-
-**@sdlc-developer** is the only agent that may write source. It implements exactly the approved plan, in dependency order, and raises a `SCOPE-REQUEST` rather than quietly touching an unlisted file. An approval covers one file for one edit — never standing permission.
-
-**@sdlc-verify** establishes the diff itself via read-only git, runs the stack's command set, and quotes real exit codes. It gets 2 auto-fix cycles and 4 total gate runs per task. Don't downgrade it to a cheaper model: it parses compiler output, where a shallow read turns a failure into a false pass.
-
-**@sdlc-review** reviews by reading. Its shell is scoped to four read-only git verbs on purpose — a reviewer that can execute the code reviews by running it instead of reading it.
-
-> **Why verify and review are separate agents:** entirely to control who gets a shell. And why they run in parallel: chaining them means a security finding can't surface until the build is green, which hides one class of problem behind another.
-
----
-
-## Skill preloading vs. runtime dispatch
-
-Two different mechanisms. Frontmatter `skills:` injects a skill's full text into the subagent at startup — but only for skills in the **same plugin**. Everything cross-plugin is invoked by scoped name at runtime.
-
-```mermaid
-flowchart LR
-    subgraph CORE ["sdlc-core · preloaded at agent startup"]
-        EC["evidence-contract"]
-        OC["output-contracts"]
-        AR["arbitration"]
-        VF["vendoring-freshness"]
-        SS["secret-scan"]
-        DA["dependency-audit"]
-        UW["ui-ux-web"]
-        UM["ui-ux-mobile"]
-        UR["ui-ux-review"]
-        DC["doc-coherence"]
-    end
-
-    P["@sdlc-plan"]
-    D["@sdlc-developer"]
-    V["@sdlc-verify"]
-    R["@sdlc-review"]
-
-    EC --- P
-    OC --- P
-    AR --- P
-    EC --- D
-    OC --- D
-    VF --- D
-    SS --- D
-    UW --- D
-    UM --- D
-    EC --- V
-    OC --- V
-    SS --- V
-    DA --- V
-    EC --- R
-    OC --- R
-    SS --- R
-    AR --- R
-    UR --- R
-
-    subgraph RUNTIME ["invoked at runtime by scoped name"]
-        RS["react-sdlc:*"]
-        FS["flutter-sdlc:*"]
-        SA["schema-architect:*"]
-        AA["api-architect:*"]
-        DOC["docs-architect:*"]
-        WK["sdlc-core:walkthrough"]
-    end
-
-    D ==>|"Skill tool"| RS
-    D ==>|"Skill tool"| FS
-    D ==>|"Skill tool"| SA
-    D ==>|"Skill tool"| AA
-    BOOT["bootstrap skills · first run"] ==> DOC
-    PIPE["pipeline / main loop"] ==> WK
-
-    DC ==>|"registry + propagation matrix"| DOCSET
-    subgraph DOCSET ["the document set · one registry, four artifacts"]
-        PRD["docs-architect:docs-prd"]
-        SD["schema-architect:schema-document"]
-        AC["api-architect:api-collection"]
-    end
-
-    subgraph EXT ["external skills these delegate to"]
-        FD["frontend-design"]
-        UPM["ui-ux-pro-max"]
-        DI["design-is"]
-        DV["dataviz"]
-    end
-
-    UW ==> FD
-    UW ==> UPM
-    UM ==> FD
-    UM ==> UPM
-    UR ==> DI
-    UW ==> DV
-```
-
-Thin lines are startup injection; thick arrows are runtime Skill-tool calls. Cross-plugin preloading is unproven, so the design never relies on it.
-
----
-
-## The gate, and when each check fires
-
-One rule sorts everything: **a check belongs in the per-task gate only if the diff can change its result.**
-
-```mermaid
-flowchart TD
-    DIFF["diff arrives at @sdlc-verify"] --> STACK{"which stack?"}
-
-    STACK -->|"web"| W1["npx tsc --noEmit"]
-    STACK -->|"web"| W2["npx eslint &lt;diff paths&gt;"]
-    STACK -->|"flutter"| F1["flutter analyze --fatal-infos"]
-    STACK -->|"flutter"| F2["dart run tools/check_boundaries.dart"]
-    STACK -->|"flutter"| F3["flutter test"]
-    STACK -->|"all stacks"| SEC["secret-scan<br/>scan-secrets.ps1"]
-
-    subgraph T1 ["TIER 1 · every task"]
-        W1
-        W2
-        F1
-        F2
-        F3
-        SEC
-    end
-
-    DIFF --> TRIG{"diff touches a<br/>dependency-defining file?"}
-    TRIG -->|"manifest · lockfile<br/>Dockerfile · pinned CI action"| DEP["dependency-audit<br/>npm audit / osv-scanner"]
-    TRIG -->|"no"| SKIPPED["SKIPPED<br/>result unchanged from last run"]
-
-    subgraph T2 ["TIER 2 · conditional"]
-        TRIG
-        DEP
-        SKIPPED
-    end
-
-    subgraph T3 ["TIER 3 · scheduled, diff-independent"]
-        SCHED["weekly dependency audit<br/>advisories land on untouched code"]
-        FULL["full-repo lint report"]
-        SAST["SAST sweep — not built"]
-    end
-
-    subgraph MANUAL ["moved out of the gate"]
-        BUILD["production build<br/>run by hand when the diff touches<br/>bundler config · tsconfig paths<br/>asset imports · env reads"]
-    end
-
-    W1 --> TABLE
-    W2 --> TABLE
-    F1 --> TABLE
-    F2 --> TABLE
-    F3 --> TABLE
-    SEC --> TABLE
-    DEP --> TABLE
-    SKIPPED --> TABLE
-
-    TABLE["gate results table<br/>one row per check, always"]
-```
-
-### Five result states
-
-| State | Meaning | Verdict |
-|---|---|---|
-| `PASS` | Ran, returned a real report, nothing at or above threshold | — |
-| `FAIL` | Ran and found something | exit 1 |
-| `SKIPPED` | Conditional check correctly didn't fire — no trigger in the diff | exit 0, reported as `SKIPPED` |
-| `NOT RUN` | Tool absent or invocation failed. **A missing tool is never a pass** | exit 2, INCOMPLETE |
-| `NOT COVERED` | Permanent documented scope gap, e.g. container image scanning | — |
-
-Three distinctions do real work:
-
-- **`SKIPPED` is not `PASS`.** Collapsing them is the same defect as reporting an unexecuted command as passing. A broken trigger that silently reads green is worse than no check, because it manufactures confidence.
-- **`NOT COVERED` is not `NOT RUN`.** A permanent scope gap differs from a tool that should have worked and didn't. Counting the former as the latter makes *every* run INCOMPLETE — and a check that's always incomplete gets ignored.
-- **Parsing successfully is not having a report.** `npm audit` emits its own errors as valid JSON (`{"error":{"code":"ENOLOCK"}}`) that parses cleanly and contains zero vulnerabilities. The runner requires the report shape before trusting a zero count.
-
-### Why there's no production build in the gate
-
-It's the slowest check available, re-runs every fix cycle, and largely re-proves what `tsc` already established. What escapes: bundler-vs-tsconfig alias mismatches, plugin/transform config errors, asset imports that type-check via a `.d.ts` but have no file behind them, import cycles, and missing build-time env values.
-
-That's acceptable rather than reckless because **the release path still bundles** — `react-ship`'s container build runs it. A broken build fails at ship, not silently. Run it by hand when the diff touches bundler config, tsconfig paths, an alias, an asset pipeline, or an env read.
-
----
-
-## All 35 skills
-
-### `sdlc-core` — process (11)
-
-| Skill | Verb | Fires when |
-|---|---|---|
-| `evidence-contract` | attest | Preloaded into all four agents. The only three evidence shapes: exit code + output, `file:line`, or a fetched URL. Everything else carries an inline `ASSUMPTION:` prefix. |
-| `output-contracts` | emit | Preloaded into all four. Output templates and forced tokens in one place, so four agent bodies can't drift. |
-| `secret-scan` | scan | **Tier 1, every task.** 11 rules plus an executable engine. Blocking. |
-| `dependency-audit` | audit | **Tier 2** on trigger paths, **Tier 3** on a schedule. Expiring suppressions only. |
-| `ui-ux-web` | design (web) | The diff touches web UI. Orders taste → data → compliance. |
-| `ui-ux-mobile` | design (mobile) | The diff touches mobile UI. Adds platform idioms, safe areas, thumb reach. |
-| `ui-ux-review` | review (UI/UX) | Preloaded into review. 11 defect categories plus a Rams principle pass. |
-| `arbitration` | arbitrate | Two stages disagree. Writes `docs/decisions/` and escalates rather than letting the later agent win. |
-| `vendoring-freshness` | refresh | Copying external content. Provenance header, license check, strip persona preambles. |
-| `walkthrough` | document | Pipeline step 8. Manual-verification steps and `Not done` are both mandatory and non-empty. |
-| `doc-coherence` | reconcile | A design document changes. Owns `docs/traceability.json` — one immutable `<APP>-P<NN>` id per screen binding it to access token, tables, endpoints and collection requests — plus the propagation matrix that says which sibling documents a given change class must also edit, and `check-coherence.ps1`, which fails on seven drift codes in both directions. A traceability *section* records coherence; only a checker enforces it. |
-
-### `react-sdlc` — web (4)
-
-| Skill | Verb | What it owns |
-|---|---|---|
-| `react-bootstrap` | scaffold | Greenfield or adopt-in-place version profiles, plus a full `src/` overlay: axios client with single-flight 401 refresh, idempotent-only retry, an `ApiError` union, react-router 8 with a pre-mount auth guard, typed runtime config, storage behind interfaces, Zustand slices, Tailwind v4 tokens, i18n. ESLint 10 flat config whose feature-boundary rule is proven to fire. Reverse-proxy auth so no credential reaches the browser. |
-| `react-slice` | slice | The vertical seam: DTO → transformer → `BaseApiService` → query/mutation typed with `ApiError` → component rendering all four states. Delegates every visual decision to `ui-ux-web`. |
-| `react-verify` | gate | typecheck + diff-scoped lint via `gate.ps1`, including the boundary rule and its silent-no-op re-proof. |
-| `react-ship` | release | Refuses to run until five unverified container behaviours are confirmed once. |
-
-### `docs-architect` — documentation (5)
-
-Split by **source of truth and refresh trigger**, not by stack — four stacks × four doc types would be sixteen skills that all drift. The trigger split is what puts `docs-prd` and `docs-reference` at opposite ends of the same lifecycle: one is written before the code, the other generated from a deployed dictionary, and neither substitutes for the other.
-
-| Skill | Verb | What it owns |
-|---|---|---|
-| `docs-prd` | specify | The MD.050 page-level design a **business reviewer signs** — `Page Description` / `Page Design` wireframe / the fixed 10-column `Field Properties` table / `Process` / `Validations`, plus Buttons, Permissions Catalogue, Sample Roles and Notes. Rules D1–D24. The only documentation skill that works **before** any code exists. A field with no column behind it is written `GAP:`, never given a plausible `Varchar2(100)` to make the table look finished; wireframes carry real sample data because `[field]` placeholders are unreviewable. |
-| `docs-context` | index | The 3-tier agent context: `code-review-graph` (AST/blast radius), `graphify` (structural), `llmwiki/` (architecture memory). Creates them for greenfield or existing projects. `ensure-context.ps1` reports NOT RUN for an absent tool and STUB for an unauthored wiki, and exits non-zero for both — a placeholder must not read as documentation. |
-| `docs-onboarding` | onboard | One `CODEBASE_ONBOARDING.md` owning the **cross-stack request trace** (React click → ORDS → PL/SQL → table → back), plus a per-stack deep-dive for each stack actually detected. A fact lives in exactly one file; everything else links. `Flaws and risks` is a required section. |
-| `docs-reference` | reference | Exhaustive schema and API reference generated from the **live dictionary**, not from source files — so a disagreement with the checked-in DDL is real deployment drift, reported rather than reconciled. Reports column-comment coverage as a percentage. |
-| `docs-guide` | guide | End-user, task-oriented guides with a checked-in **screenshot manifest** so images are regenerable rather than hand-pasted. Masks identifying data before capture. With no browser tool: writes guides and manifest, reports screenshots NOT RUN — never a placeholder image, never a described screen it did not see. |
-
-### `flutter-sdlc` — mobile (4)
-
-| Skill | Verb | What it owns |
-|---|---|---|
-| `flutter-bootstrap` | scaffold | Strict analysis baseline plus a brownfield suppression layer, flavor entrypoints, a ~20-line boundary checker instead of an analyzer plugin. |
-| `flutter-slice` | slice | Service → Repository returning sealed `Result` → Cubit → Screen with exhaustive `switch`. `flutter_bloc` is settled; Cubit vs full Bloc is the only per-feature choice. |
-| `flutter-verify` | gate | Blocking: analyze, boundaries, tests. Advisory: bloc lint, coverage ratchet. |
-| `flutter-ship` | release | Android flavors and signing, obfuscation paired with symbol retention. iOS is a documented stub. |
-
-### `schema-architect` — database (6)
-
-| Skill | Verb | What it owns |
-|---|---|---|
-| `schema-model` | model | Nine-step request → DDL procedure, per-FK `ON DELETE` rationale, and the FK-indexing step Oracle doesn't do for you. Owns the naming contract for **data objects**. |
-| `schema-document` | document | The twelve-section design document a team reviews **before** DDL ships — naming legend, WHO contract, mermaid ER (full plus per-domain above 15 tables, because one diagram with 34 tables is a hairball nobody reads), full table catalog, relationship matrix, lookup seed data, traceability map, numbered assumptions, coverage report, DDL appendix. Rules S1–S22. The matrix is the spine: every FK carries an `ON DELETE` **and a rationale**, and `Standard` is a review failure. `ON DELETE` is the highest-consequence, lowest-attention decision in a schema. |
-| `plsql-conventions` | conform | Rules P1–P20: the naming contract for **program units** (`_p` procedures, `_f` functions, `_pkg` packages, `l_`/`p_`/`g_` scope prefixes) and the large-data mechanics — `BULK COLLECT ... LIMIT`, CLOB assembly, and why `l_body := l_body \|\| x` in a loop is O(n²). P17 (no request state in package globals under pooled connections) is a security rule, not a tidiness one. |
-| `schema-emit` | emit-ddl | Business, junction, and lookup templates. Identity columns for greenfield; sequence + trigger as the adopt-in-place path. |
-| `schema-audit` | audit | Four scripts written as exhaustive negative filters, so an empty result is a real pass. |
-| `schema-promote` | promote | Six-phase promotion, grants first, explicit per-object grants, invalid-object check last, rollback policy by change class. |
-
-### `api-architect` — API (5)
-
-| Skill | Verb | What it owns |
-|---|---|---|
-| `api-collection` | collect | A Postman v2.1 collection **and** `api.md`, generated from one manifest in one run so they cannot disagree. Rules C1–C16. Extends `api-audit`'s manifest rather than forking it — one file, two consumers, pre- and post-deployment. Every request carries a saved example (`NO EXAMPLE CAPTURED` when it doesn't, never an invented body); auth is a collection variable so `secret-scan` has nothing to find; the always-200 envelope is **labelled** legacy, not silently rewritten as `201`. Refuses to regenerate over a collection edited since it was written — generate-then-tweak-in-Postman is the workflow, so destroying those edits is the failure mode. |
-| `api-contract` | contract | Numbered rules A1–A23 so a review can cite a violation by number. Real HTTP status codes and RFC 9457 `problem+json` are the default; the always-200 pattern is a labelled legacy path. A7 carries the ORDS pagination facts (`:fetch_offset`/`:fetch_size`; `:page_size` is deprecated **and reserved**; a PL/SQL handler's ref cursor is **not** auto-paginated); A23 decides whether a collection needs bounding at all. |
-| `api-emit-handler` | emit-handler | Collection, by-id, and write-operation templates. Validation before any mutation; instrumentation at every entry point. |
-| `api-audit` | audit | Diffs the declared surface against what's actually deployed, both directions, plus a scan for request-scoped state held at module scope. |
-| `api-publish` | publish | Teardown → define → enable → drift audit → runnable smoke test. The checked-in file is truth. |
-
----
-
-## The rules that bound the loop
-
-- **Two human checkpoints.** Plan approval, and the final walkthrough review. A `NEEDS-DECISION` can't be defaulted past.
-- **No agent mutates git.** Read-only `git diff`, `status`, `log`, `show` are permitted. Commit, push, reset, stash are always human.
-- **Serial execution.** One task in flight. Without branch isolation, two tasks in one working tree interleave indistinguishably by review time — so an unfinished walkthrough or an unapproved plan blocks admission.
-- **Bounded cycles.** Verify gets 2 auto-fix cycles and 4 total gate runs. Review gets 0 — it's read-only. A security-fix re-run is free of the budget.
-- **A failure is never hidden to manufacture green.** If a security fix breaks the build, the walkthrough goes `RED` stating both facts. The fix is not reverted.
-- **An unexecuted command is `NOT RUN`.** Never a pass, never omitted. Every other rule here defers to this one.
-
----
-
-## Status, honestly
-
-- **The plugin loader has not accepted these files.** Structure, frontmatter, reference resolution, and tool allowlists were verified; nothing here has been installed as a plugin by Claude Code yet.
-- **`react-sdlc`'s templates ARE execution-verified (2026-07-31).** Its full dependency set was installed together (389 packages, zero peer conflicts) and driven in a real Vite project on Node v24.14.1 / Windows 11: `tsc --noEmit`, `eslint .`, and `vite build` all exit 0, and 8/8 tests pass — covering the scaffold, the `react-slice` templates, and the `forms/` templates. Seven real failures were found and fixed in the process, including that `eslint-plugin-jsx-a11y` cannot install under ESLint 10, that the feature-boundary rule was a silent no-op, and that the `forms/` templates never compiled at all. **This is the one plugin whose "it works" claim is backed by having run it** — keep it true by re-running those four commands after editing a react template.
-- **`react-sdlc`'s container templates are still unverified.** No image was built or run; `react-ship`'s STOP CONDITIONS still gate them.
-- **Both PowerShell engines were executed and tested** — `scan-secrets.ps1` against planted secrets and placeholder bait, `dependency-audit.ps1` against a real vulnerable tree, a clean tree, a no-trigger diff, and a missing lockfile.
-- **The three documentation-set engines ARE execution-verified (2026-08-10).** `check-coherence.ps1` was driven against fixtures planting all seven drift codes plus a clean set and a missing registry, and returns 1 / 0 / 2 correctly. `emit-collection.ps1` and `audit-collection.ps1` were run against the real example manifest: six endpoints, four folders, a smoke folder, all four audit codes fired on injected drift, and the C16 refusal path was exercised across untouched / hand-edited / foreign / `-Force`. **Four real bugs were found by running them and fixed:** a literal em-dash in a `.ps1` breaks the parse outright, because Windows PowerShell 5.1 reads a BOM-less script as ANSI (all house scripts are ASCII-only — characters needed in *output* are built from code points); `Set-Content -Encoding UTF8` writes a BOM that stops a strict markdown parser seeing the leading `#`; `ConvertTo-Json` escapes `<`/`>`/`'`/`&` and pads nested arrays to the key's column, which makes a documentation payload unreadable, so the example serializer is hand-rolled; and the C16 guard originally checked only for its marker, so a hand-edit to an *already-generated* collection was destroyed silently — the marker now carries a content hash.
-- **`osv-scanner` and `gitleaks` invocations are unverified** — neither tool was available during authoring. Both report `NOT RUN` rather than degrading to a pass.
-- **Container image scanning is not wired in.** It reports `NOT COVERED`.
-- **`flutter-sdlc` was never validated against a real Flutter project.** `dart format` on its templates is the only verification it received. Every version pin carries an inline `ASSUMPTION:`.
-- **`docs-prd` and `schema-document` have no executable engine, by design** — they are authoring contracts (D1–D24, S1–S22), so "verified" can only mean a document was reviewed against them. Their templates have not yet produced a signed-off document. `check-coherence.ps1` is the mechanical half, and it only matches **names**: a `Field Properties` row reading `Varchar2(100)` against a `VARCHAR2(240)` column passes every check, because both documents mention the field. A green coherence run is not "the documents agree".
-- **Not built:** `docx` conversion (delegated to `pandoc`; absent, it reports `NOT RUN` and hands over markdown — wide `Field Properties` tables need landscape section breaks and fenced wireframes need a monospace style applied, both manual post-steps in Word), user guides and screenshots (`docs-guide` needs a browser tool), `newman` execution of the emitted smoke folder, SAST, and the multi-harness generator that would emit `.agent/` and `.codex/` surfaces.
-
-Requires PowerShell 5.1+ for the gate scripts (Windows). The skills themselves are platform-neutral.
+No task completes without exit code 0 across all applicable gates.

@@ -9,7 +9,9 @@
 -- audit-timestamp columns mixing DATE and TIMESTAMP WITH TIME ZONE across
 -- sibling tables under the same prefix, (8) a table with PK-generation
 -- machinery (identity column or a NEXTVAL-driving trigger) but no actual
--- PRIMARY KEY constraint.
+-- PRIMARY KEY constraint, (9) columns using Oracle SQL reserved keywords
+-- (COMMENT, NUMBER, DATE, UID, USER, TYPE, LEVEL, MODE, SIZE, ORDER, DEFAULT,
+-- CHECK, ACCESS, ROWNUM, SESSION, STATUS).
 --
 -- EVIDENCE CONTRACT: every query below returns VIOLATIONS ONLY. An empty
 -- result set is a real PASS -- these are exhaustive negative-filter queries
@@ -233,6 +235,40 @@ SELECT ut.table_name,
           AND uc.constraint_type = 'P'
        )
  ORDER BY 1;
+
+-- ----------------------------------------------------------------------------
+-- CHECK 9 -- Columns using Oracle SQL reserved keywords.
+-- Naming a column after an Oracle SQL reserved keyword (COMMENT, NUMBER, DATE,
+-- UID, USER, TYPE, LEVEL, MODE, SIZE, ORDER, DEFAULT, CHECK, ACCESS, ROWNUM,
+-- SESSION, STATUS) forces double-quoting ("COMMENT"), turns identifiers
+-- case-sensitive, and causes ORA-00904 errors in standard unquoted queries.
+--
+-- See schema-model.md §0.1 for the approved alternative mapping table.
+-- ----------------------------------------------------------------------------
+SELECT c.table_name,
+       c.column_name,
+       'RESERVED KEYWORD COLLISION' AS violation_reason
+  FROM user_tab_columns c
+ WHERE c.table_name LIKE UPPER('&&table_prefix') || '\_%' ESCAPE '\'
+   AND c.table_name NOT LIKE UPPER('&&exclude_pattern') ESCAPE '\'
+   AND c.column_name IN (
+       'ACCESS', 'ADD', 'ALL', 'ALTER', 'AND', 'ANY', 'AS', 'ASC', 'AUDIT',
+       'BETWEEN', 'BY', 'CHAR', 'CHECK', 'CLUSTER', 'COLUMN', 'COMMENT',
+       'COMPRESS', 'CONNECT', 'CREATE', 'CURRENT', 'DATE', 'DECIMAL', 'DEFAULT',
+       'DELETE', 'DESC', 'DISTINCT', 'DROP', 'ELSE', 'EXCLUSIVE', 'EXISTS',
+       'FILE', 'FLOAT', 'FOR', 'FROM', 'GRANT', 'GROUP', 'HAVING', 'IDENTIFIED',
+       'IMMEDIATE', 'IN', 'INCREMENT', 'INDEX', 'INITIAL', 'INSERT', 'INTEGER',
+       'INTERSECT', 'INTO', 'IS', 'LEVEL', 'LIKE', 'LOCK', 'LONG', 'MAXEXTENTS',
+       'MINUS', 'MLSLABEL', 'MODE', 'MODIFY', 'NOAUDIT', 'NOCOMPRESS', 'NOT',
+       'NOWAIT', 'NULL', 'NUMBER', 'OF', 'OFFLINE', 'ON', 'ONLINE', 'OPTION',
+       'OR', 'ORDER', 'PCTFREE', 'PRIOR', 'PRIVILEGES', 'PUBLIC', 'RAW',
+       'RENAME', 'RESOURCE', 'REVOKE', 'ROW', 'ROWID', 'ROWNUM', 'ROWS',
+       'SELECT', 'SESSION', 'SET', 'SHARE', 'SIZE', 'SMALLINT', 'START',
+       'SUCCESSFUL', 'SYNONYM', 'SYSDATE', 'TABLE', 'THEN', 'TO', 'TRIGGER',
+       'UID', 'UNION', 'UNIQUE', 'UPDATE', 'USER', 'VALIDATE', 'VALUES',
+       'VARCHAR', 'VARCHAR2', 'VIEW', 'WHENEVER', 'WHERE', 'WITH'
+   )
+ ORDER BY 1, 2;
 
 -- ----------------------------------------------------------------------------
 -- OPTIONAL -- hard-fail wrapper for a deploy pipeline. This codifies a

@@ -70,16 +70,21 @@ part 'product_state.freezed.dart';
 /// exhaustive with no `default:` arm.
 @freezed
 sealed class ProductState with _$ProductState {
-  /// Nothing has been requested yet. Renders the idle empty state.
+  /// Nothing has been requested yet. Renders the idle state.
   const factory ProductState.initial() = ProductInitial;
 
-  /// A request is in flight. Renders `AppLoader`.
+  /// A request is in flight. Renders `AppLoader` / skeleton.
   const factory ProductState.loading() = ProductLoading;
+
+  /// The request succeeded but collection contains zero records. Renders `AppEmptyState`.
+  const factory ProductState.empty() = ProductEmpty;
+
+  /// User lacks entitlement or access is view-only on write screen. Renders `AppGateState`.
+  const factory ProductState.gated(String reason) = ProductGated;
 
   /// The product loaded successfully.
   const factory ProductState.loaded(ProductModel product) = ProductLoaded;
 
-  /// The request failed. Carries the typed error so the UI can decide the
-  /// affordance from the variant instead of from the message text.
+  /// The request failed. Carries typed error for AppErrorView.
   const factory ProductState.error(AppError error) = ProductError;
 }

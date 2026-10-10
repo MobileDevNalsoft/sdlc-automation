@@ -31,6 +31,30 @@ Pick (or confirm) these values before step 1, and reuse them for every object yo
 
 **Case is cosmetic, but not free to ignore.** Oracle folds every unquoted identifier to uppercase before storing it in the data dictionary (`USER_TABLES`, `USER_TAB_COLUMNS`, …) regardless of whether you typed the `CREATE TABLE` statement in lowercase, UPPERCASE, or MixedCase. Whatever case you type in source is purely a source-formatting choice — it has zero effect on how the object is matched, joined to, or queried against the dictionary — but a codebase that mixes `create table app_customer_t` in one file and `CREATE TABLE APP_ORDER_T` in another reads as if two different eras of tooling produced it. Declare a case style (this skill defaults to lowercase in running examples, UPPERCASE in the dictionary-query world of `schema-audit`, which is unavoidable since dictionary views always return uppercase) and hold it.
 
+### 0.1 Zero reserved keywords in schema identifiers
+
+Never name a table, view, column, sequence, or constraint after an Oracle SQL reserved keyword. Quoted identifiers (`"COMMENT"`, `"date"`) are strictly prohibited: quoting turns identifiers case-sensitive in the Oracle dictionary, breaking unquoted queries, PL/SQL compilation, and ORDS attribute serialization.
+
+| Forbidden Column / Name | Why Prohibited in Oracle SQL | Approved Alternative |
+|---|---|---|
+| `COMMENT` | Reserved word (`COMMENT ON TABLE/COLUMN`). `create table (comment ...)` fails with `ORA-00904` unless quoted. | `COMMENTS`, `COMMENT_TEXT`, `REMARKS`, `NOTE_BODY` |
+| `NUMBER` | Reserved SQL datatype keyword. | `ITEM_NUMBER`, `PHONE_NUMBER`, `DOC_NUM` |
+| `DATE` | Reserved SQL datatype / pseudocolumn keyword. | `EVENT_DATE`, `EFFECTIVE_DATE`, `POSTED_DATE` |
+| `UID`, `USER` | Oracle SQL pseudocolumns (`USER`, `UID` return current schema/user). | `USER_ID`, `APP_USER`, `USERNAME`, `ACTOR_ID` |
+| `TYPE` | Reserved SQL/PL-SQL DDL keyword (`CREATE TYPE`). | `ITEM_TYPE`, `LOOKUP_TYPE`, `ENTITY_TYPE` |
+| `LEVEL` | Hierarchical query reserved keyword (`CONNECT BY LEVEL`). | `HIERARCHY_LEVEL`, `SEVERITY_LEVEL`, `TIER_LEVEL` |
+| `MODE` | SQL reserved keyword (`LOCK TABLE ... IN ... MODE`). | `ACCESS_MODE`, `OPERATION_MODE` |
+| `SIZE` | SQL storage clause reserved keyword. | `FILE_SIZE_BYTES`, `BATCH_SIZE`, `ITEM_SIZE` |
+| `ORDER` | SQL clause reserved keyword (`ORDER BY`). | `PURCHASE_ORDER`, `SORT_ORDER`, `ORDER_NUM` |
+| `DEFAULT` | Column constraint reserved keyword. | `DEFAULT_VAL`, `IS_DEFAULT` |
+| `CHECK` | Table constraint reserved keyword (`CHECK (...)`). | `CHECK_STATUS`, `VERIFY_FLAG` |
+| `ACCESS` | DDL reserved keyword (`GRANT ACCESS`). | `ACCESS_LEVEL`, `ACCESS_RIGHTS` |
+| `ROWNUM`, `ROWID` | Oracle pseudocolumns. | `ROW_INDEX`, `RECORD_NUM`, `SURROGATE_ID` |
+| `SESSION` | SQL reserved keyword (`ALTER SESSION`). | `SESSION_ID`, `SESSION_TOKEN` |
+| `STATUS` | Collides in administrative dictionary views and packages. | `STATUS_CODE`, `RECORD_STATUS` |
+
+Every column in every proposed table must be screened against this table before DDL emission. `schema-audit:audit-conventions.sql` (CHECK 9) runs an exhaustive dictionary check against this exact forbidden keyword list.
+
 ## 1. Identify the business entity and its natural key
 
 Name the entity in business language first ("a customer's placed order", "a line item within an order"), then find its natural key — the thing a human would use to say "that row, not another one." Write both down before touching a column list.
